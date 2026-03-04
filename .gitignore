@@ -1,0 +1,31 @@
+# Model checkpoints (too large for GitHub)
+out/ckpt.pt
+*.pt
+
+# Large data files
+data/*/input.txt
+data/*/input.csv
+data/*/train.bin
+data/*/val.bin
+data/*/*.csv
+
+# Large prompt files
+MED4-PPIs-low-confidence_ppiGPLM_cleaned2_prompts.csv
+MED4-PPIs-low-confidence_ppiGPLM_cleaned2_prompts.txt
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Output files
+*_output.csv
+*_probabilities.csv
+*_classifications.txt
+LES_results*/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Wandb logs
+wandb/
