@@ -149,8 +149,7 @@ python roc_analysis_color_threshold_F1e.py \
 If you use this software, please cite:
 
 ```
-Nelson, Plouviez & Salehi-Ashtiani (2026). ELF-NET: Protein language models
-and satellite embeddings for marine microalgal functional composition.
+Daakour, S. et al. (2026).
 ```
 
 This software is built on nanoGPT:
