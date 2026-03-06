@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="3650" viewBox="0 0 660 3650">
+  <defs>
+    <style type="text/css">
+      .bg { fill: #ffffff; }
+      .txt {
+        font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code',
+                     'DejaVu Sans Mono', 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        fill: #1a1a2e;
+      }
+      .title {
+        font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code',
+                     'DejaVu Sans Mono', 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        font-weight: bold;
+        fill: #16213e;
+      }
+      .section {
+        font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code',
+                     'DejaVu Sans Mono', 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        font-weight: bold;
+        fill: #0f3460;
+      }
+    </style>
+  </defs>
+  <rect class="bg" width="660" height="3650" rx="4" ry="4"/>
+  <rect x="0.5" y="0.5" width="659" height="3649" rx="4" ry="4" fill="none" stroke="#d0d0d0" stroke-width="1"/>
+  <text x="30" y="43" class="title" xml:space="preserve">  ppiGPLM: Generative Protein Language Model for PPI Classification</text>
+  <text x="30" y="61" class="section" xml:space="preserve">  ==================================================================</text>
+  <text x="30" y="79" class="txt" xml:space="preserve">  Built on nanoGPT (Karpathy, 2022) | GPT-2 Small Architecture</text>
+  <text x="30" y="97" class="txt" xml:space="preserve">  Source: https://github.com/kouroshSA/ppiGPLM</text>
+  <text x="30" y="151" class="title" xml:space="preserve">  A. MODEL ARCHITECTURE</text>
+  <text x="30" y="169" class="section" xml:space="preserve">  =====================</text>
+  <text x="30" y="205" class="txt" xml:space="preserve">  Structured Protein Pair Prompt</text>
+  <text x="30" y="223" class="txt" xml:space="preserve">  +------------------------------------------------------------------------+</text>
+  <text x="30" y="241" class="txt" xml:space="preserve">  | &lt;ps1&gt;, M K T I L ..., &lt;ps2&gt;, M S E Q ..., &lt;l1&gt;, 234, &lt;l2&gt;, 189, &lt;l3&gt;  |</text>
+  <text x="30" y="259" class="txt" xml:space="preserve">  |  tag    Protein A       tag    Protein B     len_A      len_B     tag   |</text>
+  <text x="30" y="277" class="txt" xml:space="preserve">  +------------------------------------------------------------------------+</text>
+  <text x="30" y="295" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="313" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="331" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="349" class="txt" xml:space="preserve">                    | Character-Level Tokenization  |</text>
+  <text x="30" y="367" class="txt" xml:space="preserve">                    | (one token per amino acid)    |</text>
+  <text x="30" y="385" class="txt" xml:space="preserve">                    | stoi.get(ch, fallback)        |</text>
+  <text x="30" y="403" class="txt" xml:space="preserve">                    | Context window: 4,096 tokens  |</text>
+  <text x="30" y="421" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="439" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="457" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="475" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="493" class="txt" xml:space="preserve">                    | Token + Position Embeddings   |</text>
+  <text x="30" y="511" class="txt" xml:space="preserve">                    | Embedding dim: 768            |</text>
+  <text x="30" y="529" class="txt" xml:space="preserve">                    | (auto-extended if needed)     |</text>
+  <text x="30" y="547" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="565" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="583" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="601" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="619" class="txt" xml:space="preserve">                    |   Transformer Decoder Block   |&lt;--+</text>
+  <text x="30" y="637" class="txt" xml:space="preserve">                    | +---------------------------+ |   |</text>
+  <text x="30" y="655" class="txt" xml:space="preserve">                    | | Causal Self-Attention     | |   |</text>
+  <text x="30" y="673" class="txt" xml:space="preserve">                    | | 12 heads, dim 768         | |   |</text>
+  <text x="30" y="691" class="txt" xml:space="preserve">                    | +---------------------------+ |   |  x12</text>
+  <text x="30" y="709" class="txt" xml:space="preserve">                    | | Layer Norm                | |   |  layers</text>
+  <text x="30" y="727" class="txt" xml:space="preserve">                    | +---------------------------+ |   |</text>
+  <text x="30" y="745" class="txt" xml:space="preserve">                    | | Feed-Forward (MLP)        | |   |</text>
+  <text x="30" y="763" class="txt" xml:space="preserve">                    | | 768 -&gt; 3072 -&gt; 768        | |   |</text>
+  <text x="30" y="781" class="txt" xml:space="preserve">                    | +---------------------------+ |   |</text>
+  <text x="30" y="799" class="txt" xml:space="preserve">                    | | Dropout (p=0.2)           | |   |</text>
+  <text x="30" y="817" class="txt" xml:space="preserve">                    | +---------------------------+ |   |</text>
+  <text x="30" y="835" class="txt" xml:space="preserve">                    +-------------------------------+---+</text>
+  <text x="30" y="853" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="871" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="889" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="907" class="txt" xml:space="preserve">                    |     Final Layer Norm          |</text>
+  <text x="30" y="925" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="943" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="961" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="979" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="997" class="txt" xml:space="preserve">                    | Language Model Head (Linear)  |</text>
+  <text x="30" y="1015" class="txt" xml:space="preserve">                    | 768 -&gt; vocab_size             |</text>
+  <text x="30" y="1033" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1051" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="1069" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="1087" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1105" class="txt" xml:space="preserve">                    | Next-Token Logits             |</text>
+  <text x="30" y="1123" class="txt" xml:space="preserve">                    | (single token: &quot;0&quot; or &quot;1&quot;)    |</text>
+  <text x="30" y="1141" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1195" class="title" xml:space="preserve">  B. TRAINING PIPELINE</text>
+  <text x="30" y="1213" class="section" xml:space="preserve">  ====================</text>
+  <text x="30" y="1249" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1267" class="txt" xml:space="preserve">                    | PPI Training Data             |</text>
+  <text x="30" y="1285" class="txt" xml:space="preserve">                    | Interacting pairs: label &quot;1&quot;  |</text>
+  <text x="30" y="1303" class="txt" xml:space="preserve">                    | Non-interacting:   label &quot;0&quot;  |</text>
+  <text x="30" y="1321" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1339" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="1357" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="1375" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1393" class="txt" xml:space="preserve">                    | prepare.py                    |</text>
+  <text x="30" y="1411" class="txt" xml:space="preserve">                    | Character-level tokenizer     |</text>
+  <text x="30" y="1429" class="txt" xml:space="preserve">                    | -&gt; train.bin, val.bin         |</text>
+  <text x="30" y="1447" class="txt" xml:space="preserve">                    | -&gt; meta.pkl (stoi/itos maps)  |</text>
+  <text x="30" y="1465" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1483" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="1501" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="1519" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1537" class="txt" xml:space="preserve">                    |   train_.py                   |</text>
+  <text x="30" y="1555" class="txt" xml:space="preserve">                    | +---------------------------+ |</text>
+  <text x="30" y="1573" class="txt" xml:space="preserve">                    | | Optimizer: AdamW          | |</text>
+  <text x="30" y="1591" class="txt" xml:space="preserve">                    | |   lr = 5 x 10^-4         | |</text>
+  <text x="30" y="1609" class="txt" xml:space="preserve">                    | |   beta2 = 0.99           | |</text>
+  <text x="30" y="1627" class="txt" xml:space="preserve">                    | | Batch size: 12           | |</text>
+  <text x="30" y="1645" class="txt" xml:space="preserve">                    | | Grad accumulation: 2     | |</text>
+  <text x="30" y="1663" class="txt" xml:space="preserve">                    | | Iterations: 8,000        | |</text>
+  <text x="30" y="1681" class="txt" xml:space="preserve">                    | | Loss: Cross-Entropy      | |</text>
+  <text x="30" y="1699" class="txt" xml:space="preserve">                    | |   (next-token prediction) | |</text>
+  <text x="30" y="1717" class="txt" xml:space="preserve">                    | +---------------------------+ |</text>
+  <text x="30" y="1735" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1753" class="txt" xml:space="preserve">                                    |</text>
+  <text x="30" y="1771" class="txt" xml:space="preserve">                                    v</text>
+  <text x="30" y="1789" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1807" class="txt" xml:space="preserve">                    |  Checkpoint: ckpt.pt          |</text>
+  <text x="30" y="1825" class="txt" xml:space="preserve">                    |  (model + config + optimizer) |</text>
+  <text x="30" y="1843" class="txt" xml:space="preserve">                    +-------------------------------+</text>
+  <text x="30" y="1897" class="title" xml:space="preserve">  C. INFERENCE PIPELINE  (vs. nanoGPT sample.py)</text>
+  <text x="30" y="1915" class="section" xml:space="preserve">  ===============================================</text>
+  <text x="30" y="1951" class="txt" xml:space="preserve">  nanoGPT sample.py:             ppiGPLM inference:</text>
+  <text x="30" y="1969" class="txt" xml:space="preserve">  - 1 static prompt              - Thousands of protein pairs</text>
+  <text x="30" y="1987" class="txt" xml:space="preserve">  - 500 tokens generated         - 1 token predicted (fast)</text>
+  <text x="30" y="2005" class="txt" xml:space="preserve">  - No probabilities             - Softmax probabilities</text>
+  <text x="30" y="2023" class="txt" xml:space="preserve">  - stdout only                  - CSV + FASTA output</text>
+  <text x="30" y="2041" class="txt" xml:space="preserve">  - Direct stoi[c] (crashes      - stoi.get(c, fallback)</text>
+  <text x="30" y="2059" class="txt" xml:space="preserve">    on unknown chars)              (graceful handling)</text>
+  <text x="30" y="2095" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="2113" class="txt" xml:space="preserve">         | Input: Protein Pairs (text file, one pair/line)   |</text>
+  <text x="30" y="2131" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="2149" class="txt" xml:space="preserve">                                   |</text>
+  <text x="30" y="2167" class="txt" xml:space="preserve">                                   v</text>
+  <text x="30" y="2185" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="2203" class="txt" xml:space="preserve">         |              Load Model (once)                    |</text>
+  <text x="30" y="2221" class="txt" xml:space="preserve">         | +-----------------------------------------------+ |</text>
+  <text x="30" y="2239" class="txt" xml:space="preserve">         | | Load checkpoint -&gt; detect block_size          | |</text>
+  <text x="30" y="2257" class="txt" xml:space="preserve">         | | Load meta.pkl -&gt; build encoder/decoder        | |</text>
+  <text x="30" y="2275" class="txt" xml:space="preserve">         | | Move model to GPU, set eval mode              | |</text>
+  <text x="30" y="2293" class="txt" xml:space="preserve">         | | Enable mixed-precision (bfloat16/float16)     | |</text>
+  <text x="30" y="2311" class="txt" xml:space="preserve">         | +-----------------------------------------------+ |</text>
+  <text x="30" y="2329" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="2347" class="txt" xml:space="preserve">                                   |</text>
+  <text x="30" y="2365" class="txt" xml:space="preserve">                                   v</text>
+  <text x="30" y="2383" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="2401" class="txt" xml:space="preserve">         |         For each protein pair prompt:             |</text>
+  <text x="30" y="2419" class="txt" xml:space="preserve">         | +-----------------------------------------------+ |</text>
+  <text x="30" y="2437" class="txt" xml:space="preserve">         | |                                               | |</text>
+  <text x="30" y="2455" class="txt" xml:space="preserve">         | | 1. Encode prompt (char -&gt; token IDs)          | |</text>
+  <text x="30" y="2473" class="txt" xml:space="preserve">         | |    Unknown chars -&gt; stoi.get(ch, fallback)    | |</text>
+  <text x="30" y="2491" class="txt" xml:space="preserve">         | |                                               | |</text>
+  <text x="30" y="2509" class="txt" xml:space="preserve">         | | 2. Check length vs block_size                 | |</text>
+  <text x="30" y="2527" class="txt" xml:space="preserve">         | |    If too long -&gt; begin-clip:                 | |</text>
+  <text x="30" y="2545" class="txt" xml:space="preserve">         | |    start_ids = start_ids[-block_size:]        | |</text>
+  <text x="30" y="2563" class="txt" xml:space="preserve">         | |    (preserve classification-relevant end)     | |</text>
+  <text x="30" y="2581" class="txt" xml:space="preserve">         | |                                               | |</text>
+  <text x="30" y="2599" class="txt" xml:space="preserve">         | | 3. model.generate(max_new_tokens=1)           | |</text>
+  <text x="30" y="2617" class="txt" xml:space="preserve">         | |    -&gt; Predicted token (&quot;0&quot; or &quot;1&quot;)            | |</text>
+  <text x="30" y="2635" class="txt" xml:space="preserve">         | |                                               | |</text>
+  <text x="30" y="2653" class="txt" xml:space="preserve">         | | 4. Separate forward pass for probabilities:   | |</text>
+  <text x="30" y="2671" class="txt" xml:space="preserve">         | |    logits = model(x)                          | |</text>
+  <text x="30" y="2689" class="txt" xml:space="preserve">         | |    last_logits = logits[:, -1, :]             | |</text>
+  <text x="30" y="2707" class="txt" xml:space="preserve">         | |    probs = softmax(last_logits)               | |</text>
+  <text x="30" y="2725" class="txt" xml:space="preserve">         | |    P(interact) = probs[0, token_id(&quot;1&quot;)]      | |</text>
+  <text x="30" y="2743" class="txt" xml:space="preserve">         | |    P(no inter) = probs[0, token_id(&quot;0&quot;)]      | |</text>
+  <text x="30" y="2761" class="txt" xml:space="preserve">         | |                                               | |</text>
+  <text x="30" y="2779" class="txt" xml:space="preserve">         | +-----------------------------------------------+ |</text>
+  <text x="30" y="2797" class="txt" xml:space="preserve">         |       Model stays on GPU (no reloading)           |</text>
+  <text x="30" y="2815" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="2833" class="txt" xml:space="preserve">                                   |</text>
+  <text x="30" y="2851" class="txt" xml:space="preserve">                       +-----------+-----------+</text>
+  <text x="30" y="2869" class="txt" xml:space="preserve">                       |                       |</text>
+  <text x="30" y="2887" class="txt" xml:space="preserve">                       v                       v</text>
+  <text x="30" y="2905" class="txt" xml:space="preserve">             +-------------------+   +-------------------+</text>
+  <text x="30" y="2923" class="txt" xml:space="preserve">             | CSV Output        |   | FASTA Output      |</text>
+  <text x="30" y="2941" class="txt" xml:space="preserve">             | pair, P(1), P(0)  |   | &gt;pair_header      |</text>
+  <text x="30" y="2959" class="txt" xml:space="preserve">             | ...               |   | predicted_label   |</text>
+  <text x="30" y="2977" class="txt" xml:space="preserve">             +-------------------+   +-------------------+</text>
+  <text x="30" y="3031" class="title" xml:space="preserve">  D. LES EVALUATION WRAPPER</text>
+  <text x="30" y="3049" class="section" xml:space="preserve">  =========================</text>
+  <text x="30" y="3085" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="3103" class="txt" xml:space="preserve">         | Multiple Training Checkpoints (ckpt_iter_N.pt)   |</text>
+  <text x="30" y="3121" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="3139" class="txt" xml:space="preserve">                                   |</text>
+  <text x="30" y="3157" class="txt" xml:space="preserve">               +-------------------+-----------------+</text>
+  <text x="30" y="3175" class="txt" xml:space="preserve">               |                                     |</text>
+  <text x="30" y="3193" class="txt" xml:space="preserve">               v                                     v</text>
+  <text x="30" y="3211" class="txt" xml:space="preserve">  +-------------------------+           +-------------------------+</text>
+  <text x="30" y="3229" class="txt" xml:space="preserve">  | Positive Reference Set  |           | Random Reference Set    |</text>
+  <text x="30" y="3247" class="txt" xml:space="preserve">  | (PRS: 100 interacting   |           | (RRS: 100 random        |</text>
+  <text x="30" y="3265" class="txt" xml:space="preserve">  |  protein pairs)         |           |  protein pairs)         |</text>
+  <text x="30" y="3283" class="txt" xml:space="preserve">  +-------------------------+           +-------------------------+</text>
+  <text x="30" y="3301" class="txt" xml:space="preserve">               |                                     |</text>
+  <text x="30" y="3319" class="txt" xml:space="preserve">               +-------------------+-----------------+</text>
+  <text x="30" y="3337" class="txt" xml:space="preserve">                                   |</text>
+  <text x="30" y="3355" class="txt" xml:space="preserve">                                   v</text>
+  <text x="30" y="3373" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="3391" class="txt" xml:space="preserve">         | At each checkpoint:                               |</text>
+  <text x="30" y="3409" class="txt" xml:space="preserve">         | 1. Run inference on PRS and RRS                   |</text>
+  <text x="30" y="3427" class="txt" xml:space="preserve">         | 2. Extract softmax probabilities                  |</text>
+  <text x="30" y="3445" class="txt" xml:space="preserve">         | 3. Compute ROC curve (threshold-colored)          |</text>
+  <text x="30" y="3463" class="txt" xml:space="preserve">         | 4. Derive AUC, best F1, optimal threshold         |</text>
+  <text x="30" y="3481" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="3499" class="txt" xml:space="preserve">                                   |</text>
+  <text x="30" y="3517" class="txt" xml:space="preserve">                                   v</text>
+  <text x="30" y="3535" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+  <text x="30" y="3553" class="txt" xml:space="preserve">         | Across all checkpoints:                           |</text>
+  <text x="30" y="3571" class="txt" xml:space="preserve">         | LES = Area under (metric vs. iteration) curve     |</text>
+  <text x="30" y="3589" class="txt" xml:space="preserve">         | -&gt; LES-AUC, LES-F1, LES-Threshold                |</text>
+  <text x="30" y="3607" class="txt" xml:space="preserve">         | -&gt; Metric trajectory plots                        |</text>
+  <text x="30" y="3625" class="txt" xml:space="preserve">         +---------------------------------------------------+</text>
+</svg>

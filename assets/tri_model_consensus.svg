@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="598" height="2408" viewBox="0 0 598 2408">
+  <defs>
+    <style type="text/css">
+      .bg { fill: #ffffff; }
+      .txt {
+        font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code',
+                     'DejaVu Sans Mono', 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        fill: #1a1a2e;
+      }
+      .title {
+        font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code',
+                     'DejaVu Sans Mono', 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        font-weight: bold;
+        fill: #16213e;
+      }
+      .section {
+        font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code',
+                     'DejaVu Sans Mono', 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        font-weight: bold;
+        fill: #0f3460;
+      }
+    </style>
+  </defs>
+  <rect class="bg" width="598" height="2408" rx="4" ry="4"/>
+  <rect x="0.5" y="0.5" width="597" height="2407" rx="4" ry="4" fill="none" stroke="#d0d0d0" stroke-width="1"/>
+  <text x="30" y="43" class="title" xml:space="preserve">  Tri-Model Consensus Framework for PPI Screening</text>
+  <text x="30" y="61" class="section" xml:space="preserve">  =================================================</text>
+  <text x="30" y="79" class="txt" xml:space="preserve">  Three independent sequence-based PPI prediction models</text>
+  <text x="30" y="133" class="title" xml:space="preserve">  A. ARCHITECTURAL COMPARISON</text>
+  <text x="30" y="151" class="section" xml:space="preserve">  ===========================</text>
+  <text x="30" y="187" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="205" class="txt" xml:space="preserve">  |      ppiGPLM        |       ppiDCE        |      ppiBTEP        |</text>
+  <text x="30" y="223" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="241" class="txt" xml:space="preserve">  | Foundation:         | Foundation:         | Foundation:         |</text>
+  <text x="30" y="259" class="txt" xml:space="preserve">  |  nanoGPT / GPT-2   |  ESM-1b             |  ESM-1b             |</text>
+  <text x="30" y="277" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="295" class="txt" xml:space="preserve">  | Strategy:           | Strategy:           | Strategy:           |</text>
+  <text x="30" y="313" class="txt" xml:space="preserve">  |  Next-token         |  Cross-encoding     |  Siamese            |</text>
+  <text x="30" y="331" class="txt" xml:space="preserve">  |  prediction         |  (sentence-pair)    |  (twin-branch)      |</text>
+  <text x="30" y="349" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="367" class="txt" xml:space="preserve">  | Input encoding:     | Input encoding:     | Input encoding:     |</text>
+  <text x="30" y="385" class="txt" xml:space="preserve">  |  Char-level tokens  |  ESM tokenizer      |  ESM tokenizer      |</text>
+  <text x="30" y="403" class="txt" xml:space="preserve">  |  Single prompt with |  [CLS] A [SEP] B    |  [CLS] A and        |</text>
+  <text x="30" y="421" class="txt" xml:space="preserve">  |  both sequences +   |  (joint input)      |  [CLS] B            |</text>
+  <text x="30" y="439" class="txt" xml:space="preserve">  |  metadata tags      |                     |  (separate inputs)  |</text>
+  <text x="30" y="457" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="475" class="txt" xml:space="preserve">  | Cross-attention:    | Cross-attention:    | Cross-attention:    |</text>
+  <text x="30" y="493" class="txt" xml:space="preserve">  |  Causal (left-to-   |  Full bidirectional |  NONE               |</text>
+  <text x="30" y="511" class="txt" xml:space="preserve">  |  right, autoregr.)  |  between A and B    |  (independent       |</text>
+  <text x="30" y="529" class="txt" xml:space="preserve">  |  across A then B    |  at every layer     |   encoding)         |</text>
+  <text x="30" y="547" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="565" class="txt" xml:space="preserve">  | Classification:     | Classification:     | Classification:     |</text>
+  <text x="30" y="583" class="txt" xml:space="preserve">  |  No separate head;  |  [CLS] -&gt; Dropout   |  Concat [CLS_A,     |</text>
+  <text x="30" y="601" class="txt" xml:space="preserve">  |  next-token logits  |  -&gt; Linear -&gt; 2     |  CLS_B] -&gt; Dropout  |</text>
+  <text x="30" y="619" class="txt" xml:space="preserve">  |  over &quot;0&quot;/&quot;1&quot;       |                     |  -&gt; Linear -&gt; 2     |</text>
+  <text x="30" y="637" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="655" class="txt" xml:space="preserve">  | Probability:        | Probability:        | Probability:        |</text>
+  <text x="30" y="673" class="txt" xml:space="preserve">  |  softmax over       |  softmax over       |  softmax over       |</text>
+  <text x="30" y="691" class="txt" xml:space="preserve">  |  &quot;1&quot; and &quot;0&quot; token  |  2 output classes   |  2 output classes   |</text>
+  <text x="30" y="709" class="txt" xml:space="preserve">  |  logits             |                     |                     |</text>
+  <text x="30" y="727" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="745" class="txt" xml:space="preserve">  | Layers: 12          | Layers: 12          | Layers: 6-18        |</text>
+  <text x="30" y="763" class="txt" xml:space="preserve">  | Heads:  12          | (ESM-1b config)     | (configurable)      |</text>
+  <text x="30" y="781" class="txt" xml:space="preserve">  | Dim:    768         |                     |                     |</text>
+  <text x="30" y="799" class="txt" xml:space="preserve">  | Context: 4,096      | Max len: 1,024      | (ESM-1b config)     |</text>
+  <text x="30" y="817" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="835" class="txt" xml:space="preserve">  | Optimizer:          | Optimizer:          | Optimizer:          |</text>
+  <text x="30" y="853" class="txt" xml:space="preserve">  |  AdamW              |  AdamW              |  AdamW              |</text>
+  <text x="30" y="871" class="txt" xml:space="preserve">  |  lr = 5 x 10^-4    |  lr = 2 x 10^-5    |  lr = 1 x 10^-5    |</text>
+  <text x="30" y="889" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
+  <text x="30" y="943" class="title" xml:space="preserve">  B. TRI-MODEL CONSENSUS SCREENING PIPELINE</text>
+  <text x="30" y="961" class="section" xml:space="preserve">  ==========================================</text>
+  <text x="30" y="997" class="txt" xml:space="preserve">                      Low-Confidence Y2H Interactions</text>
+  <text x="30" y="1015" class="txt" xml:space="preserve">                      (~15,000 protein pairs)</text>
+  <text x="30" y="1033" class="txt" xml:space="preserve">                                 |</text>
+  <text x="30" y="1051" class="txt" xml:space="preserve">          +----------------------+----------------------+</text>
+  <text x="30" y="1069" class="txt" xml:space="preserve">          |                      |                      |</text>
+  <text x="30" y="1087" class="txt" xml:space="preserve">          v                      v                      v</text>
+  <text x="30" y="1105" class="txt" xml:space="preserve">  +---------------+      +---------------+      +---------------+</text>
+  <text x="30" y="1123" class="txt" xml:space="preserve">  |   ppiGPLM     |      |    ppiDCE     |      |   ppiBTEP     |</text>
+  <text x="30" y="1141" class="txt" xml:space="preserve">  |               |      |               |      |               |</text>
+  <text x="30" y="1159" class="txt" xml:space="preserve">  | GPT-2 small   |      | ESM-1b cross- |      | ESM-1b        |</text>
+  <text x="30" y="1177" class="txt" xml:space="preserve">  | next-token    |      | encoder       |      | Siamese       |</text>
+  <text x="30" y="1195" class="txt" xml:space="preserve">  | prediction    |      |               |      |               |</text>
+  <text x="30" y="1213" class="txt" xml:space="preserve">  |               |      |               |      |               |</text>
+  <text x="30" y="1231" class="txt" xml:space="preserve">  | P(interact)   |      | P(interact)   |      | P(interact)   |</text>
+  <text x="30" y="1249" class="txt" xml:space="preserve">  +-------+-------+      +-------+-------+      +-------+-------+</text>
+  <text x="30" y="1267" class="txt" xml:space="preserve">          |                      |                      |</text>
+  <text x="30" y="1285" class="txt" xml:space="preserve">          v                      v                      v</text>
+  <text x="30" y="1303" class="txt" xml:space="preserve">  +---------------+      +---------------+      +---------------+</text>
+  <text x="30" y="1321" class="txt" xml:space="preserve">  | Filter:       |      | Filter:       |      | Filter:       |</text>
+  <text x="30" y="1339" class="txt" xml:space="preserve">  | P &gt;= 0.95     |      | P &gt;= 0.95     |      | P &gt;= 0.95     |</text>
+  <text x="30" y="1357" class="txt" xml:space="preserve">  +-------+-------+      +-------+-------+      +-------+-------+</text>
+  <text x="30" y="1375" class="txt" xml:space="preserve">          |                      |                      |</text>
+  <text x="30" y="1393" class="txt" xml:space="preserve">          +----------------------+----------------------+</text>
+  <text x="30" y="1411" class="txt" xml:space="preserve">                                 |</text>
+  <text x="30" y="1429" class="txt" xml:space="preserve">                                 v</text>
+  <text x="30" y="1447" class="txt" xml:space="preserve">                   +---------------------------+</text>
+  <text x="30" y="1465" class="txt" xml:space="preserve">                   |  INTERSECTION             |</text>
+  <text x="30" y="1483" class="txt" xml:space="preserve">                   |  (all three models agree  |</text>
+  <text x="30" y="1501" class="txt" xml:space="preserve">                   |   with high confidence)   |</text>
+  <text x="30" y="1519" class="txt" xml:space="preserve">                   +---------------------------+</text>
+  <text x="30" y="1537" class="txt" xml:space="preserve">                                 |</text>
+  <text x="30" y="1555" class="txt" xml:space="preserve">                                 v</text>
+  <text x="30" y="1573" class="txt" xml:space="preserve">                   +---------------------------+</text>
+  <text x="30" y="1591" class="txt" xml:space="preserve">                   | 657 Tri-Model-Supported   |</text>
+  <text x="30" y="1609" class="txt" xml:space="preserve">                   | Interactions              |</text>
+  <text x="30" y="1627" class="txt" xml:space="preserve">                   +---------------------------+</text>
+  <text x="30" y="1645" class="txt" xml:space="preserve">                                 |</text>
+  <text x="30" y="1663" class="txt" xml:space="preserve">                                 v</text>
+  <text x="30" y="1681" class="txt" xml:space="preserve">                   +---------------------------+</text>
+  <text x="30" y="1699" class="txt" xml:space="preserve">                   | AF3-Quantum Evaluation    |</text>
+  <text x="30" y="1717" class="txt" xml:space="preserve">                   | (AlphaFold3 + quantum     |</text>
+  <text x="30" y="1735" class="txt" xml:space="preserve">                   |  tunneling descriptors)   |</text>
+  <text x="30" y="1753" class="txt" xml:space="preserve">                   +---------------------------+</text>
+  <text x="30" y="1807" class="title" xml:space="preserve">  C. WHY THREE ORTHOGONAL MODELS?</text>
+  <text x="30" y="1825" class="section" xml:space="preserve">  ================================</text>
+  <text x="30" y="1861" class="txt" xml:space="preserve">  Each model captures different aspects of PPI:</text>
+  <text x="30" y="1897" class="txt" xml:space="preserve">  ppiGPLM (Generative):</text>
+  <text x="30" y="1915" class="txt" xml:space="preserve">  +------------------------------------------------------+</text>
+  <text x="30" y="1933" class="txt" xml:space="preserve">  |  Causal (left-to-right) attention over concatenated   |</text>
+  <text x="30" y="1951" class="txt" xml:space="preserve">  |  A,B sequences. Learns sequential dependencies and   |</text>
+  <text x="30" y="1969" class="txt" xml:space="preserve">  |  prompt-conditioned interaction patterns. Character-  |</text>
+  <text x="30" y="1987" class="txt" xml:space="preserve">  |  level tokenization captures individual residue       |</text>
+  <text x="30" y="2005" class="txt" xml:space="preserve">  |  contributions.                                       |</text>
+  <text x="30" y="2023" class="txt" xml:space="preserve">  +------------------------------------------------------+</text>
+  <text x="30" y="2059" class="txt" xml:space="preserve">  ppiDCE (Cross-Encoder):</text>
+  <text x="30" y="2077" class="txt" xml:space="preserve">  +------------------------------------------------------+</text>
+  <text x="30" y="2095" class="txt" xml:space="preserve">  |  Full bidirectional cross-attention between A and B   |</text>
+  <text x="30" y="2113" class="txt" xml:space="preserve">  |  at every transformer layer. Directly models inter-   |</text>
+  <text x="30" y="2131" class="txt" xml:space="preserve">  |  protein residue-residue dependencies. Most           |</text>
+  <text x="30" y="2149" class="txt" xml:space="preserve">  |  expressive but slowest per pair.                     |</text>
+  <text x="30" y="2167" class="txt" xml:space="preserve">  +------------------------------------------------------+</text>
+  <text x="30" y="2203" class="txt" xml:space="preserve">  ppiBTEP (Siamese):</text>
+  <text x="30" y="2221" class="txt" xml:space="preserve">  +------------------------------------------------------+</text>
+  <text x="30" y="2239" class="txt" xml:space="preserve">  |  Independent protein encoding with NO cross-sequence  |</text>
+  <text x="30" y="2257" class="txt" xml:space="preserve">  |  attention. Must capture interaction-predictive        |</text>
+  <text x="30" y="2275" class="txt" xml:space="preserve">  |  features from each protein&#x27;s OWN context.            |</text>
+  <text x="30" y="2293" class="txt" xml:space="preserve">  |  Classification relies on learned protein-level        |</text>
+  <text x="30" y="2311" class="txt" xml:space="preserve">  |  representations rather than pairwise features.        |</text>
+  <text x="30" y="2329" class="txt" xml:space="preserve">  +------------------------------------------------------+</text>
+  <text x="30" y="2365" class="txt" xml:space="preserve">  Consensus = agreement across three fundamentally different</text>
+  <text x="30" y="2383" class="txt" xml:space="preserve">  encoding strategies increases confidence in predictions.</text>
+</svg>
