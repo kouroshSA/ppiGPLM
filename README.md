@@ -2,6 +2,8 @@
 
 A GPT-2-based protein language model repurposed for binary protein-protein interaction (PPI) classification. Built on [nanoGPT](https://github.com/karpathy/nanoGPT) by Andrej Karpathy.
 
+![ppiGPLM](assets/ppiGPLM.png)
+
 ## Overview
 
 ppiGPLM uses a GPT-2 small architecture (12 layers, 12 attention heads, 768 embedding dimensions) with character-level tokenization to predict whether two proteins interact. Rather than using a separate classification head, ppiGPLM frames PPI prediction as next-token prediction: given a structured prompt encoding a protein pair, the model predicts a binary label (`0` or `1`) as the next token. Softmax probabilities over the label tokens provide continuous interaction scores.
@@ -61,12 +63,12 @@ ppiGPLM/
 |   +-- MED4_char/                    # MED4 PPI dataset
 |       |-- prepare.py                # Character-level tokenizer
 |       +-- meta.pkl                  # Vocabulary (stoi/itos mappings)
-|-- out/                              # Model checkpoint directory
-|   +-- ckpt.pt                       # Trained model checkpoint
-|-- MED4_100_PRS.txt                  # Positive Reference Set (100 interacting pairs)
-|-- MED4_100_RRS.txt                  # Random Reference Set (100 random pairs)
-|-- MED4_Int_100pairs_prompts.txt     # Interacting pair prompts
-|-- MED4_100_RND_prompts.txt          # Random pair prompts
+|-- assets/
+|   |-- ppiGPLM.png                  # Model overview illustration
+|   |-- ppiGPLM_architecture.svg     # Detailed architecture flow (SVG)
+|   |-- ppiGPLM_architecture.png     # Detailed architecture flow (PNG)
+|   |-- tri_model_consensus.svg      # Tri-model consensus framework (SVG)
+|   +-- tri_model_consensus.png      # Tri-model consensus framework (PNG)
 |-- requirements.txt
 |-- LICENSE
 +-- README.md
@@ -92,9 +94,9 @@ Run inference on a set of protein pairs:
 
 ```bash
 python sample_fasta3.3_softmax_error_handling3e.py \
-    --input_file MED4_100_PRS.txt \
+    --input_file protein_pairs.txt \
     --output_dir ppi_results \
-    --output_prefix MED4_PRS
+    --output_prefix my_predictions
 ```
 
 This produces:
@@ -128,8 +130,8 @@ The LES-wrapper automates evaluation across multiple training checkpoints, compu
 ```bash
 python LES-wrapper.py \
     --checkpoint_dir out \
-    --prs_file MED4_100_PRS.txt \
-    --rrs_file MED4_100_RRS.txt \
+    --prs_file PRS.txt \
+    --rrs_file RRS.txt \
     --output_dir LES_results \
     --vanilla
 ```
@@ -143,6 +145,16 @@ python roc_analysis_color_threshold_F1e.py \
     --prs_file ppi_results/PRS_probabilities.csv \
     --rrs_file ppi_results/RRS_probabilities.csv
 ```
+
+## Architecture Diagrams
+
+See `assets/ppiGPLM_architecture.svg` for a detailed flow diagram covering:
+- **A.** Model architecture (GPT-2 small with character-level tokenization)
+- **B.** Training pipeline
+- **C.** Inference pipeline (vs. nanoGPT sample.py comparison)
+- **D.** LES evaluation wrapper
+
+See `assets/tri_model_consensus.svg` for the tri-model consensus framework with [ppiDCE](https://github.com/kouroshSA/ppiDCE) and [ppiBTEP](https://github.com/kouroshSA/ppiBTEP).
 
 ## Citation
 
