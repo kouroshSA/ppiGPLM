@@ -64,9 +64,7 @@ ppiGPLM/
 |       |-- prepare.py                # Character-level tokenizer
 |       +-- meta.pkl                  # Vocabulary (stoi/itos mappings)
 |-- assets/
-|   |-- ppiGPLM.png                  # Model overview illustration
-|   |-- ppiGPLM_architecture.svg     # Detailed architecture flow (SVG)
-|   |-- ppiGPLM_architecture.png     # Detailed architecture flow (PNG)
+|   |-- ppiGPLM.png                  # ASCII workflow diagram
 |   |-- tri_model_consensus.svg      # Tri-model consensus framework (SVG)
 |   +-- tri_model_consensus.png      # Tri-model consensus framework (PNG)
 |-- requirements.txt
@@ -148,11 +146,11 @@ python roc_analysis_color_threshold_F1e.py \
 
 ## Architecture Diagrams
 
-See `assets/ppiGPLM_architecture.svg` for a detailed flow diagram covering:
-- **A.** Model architecture (GPT-2 small with character-level tokenization)
-- **B.** Training pipeline
-- **C.** Inference pipeline (vs. nanoGPT sample.py comparison)
-- **D.** LES evaluation wrapper
+The ASCII workflow diagram (`assets/ppiGPLM.png`) covers:
+- **A.** Prompt-based input strategy (character-level tokenization)
+- **B.** Model architecture (GPT-2 small, causal self-attention)
+- **C.** Training pipeline
+- **D.** Inference pipeline with LES evaluation
 
 See `assets/tri_model_consensus.svg` for the tri-model consensus framework with [ppiDCE](https://github.com/kouroshSA/ppiDCE) and [ppiBTEP](https://github.com/kouroshSA/ppiBTEP).
 
