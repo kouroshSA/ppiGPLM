@@ -152,6 +152,10 @@ The ASCII workflow diagram (`assets/ppiGPLM.png`) covers:
 - **C.** Training pipeline
 - **D.** Inference pipeline with LES evaluation
 
+> Note: the diagram lists "Flash Attention" — this path is taken automatically
+> when running on PyTorch ≥ 2.0; older versions fall back to the manual
+> scaled-dot-product implementation. Numerical results are equivalent.
+
 See `assets/tri_model_consensus.svg` for the tri-model consensus framework with [ppiDCE](https://github.com/kouroshSA/ppiDCE) and [ppiBTEP](https://github.com/kouroshSA/ppiBTEP).
 
 ## Citation

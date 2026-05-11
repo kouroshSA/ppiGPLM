@@ -1,5 +1,4 @@
-# train a miniature character-level shakespeare model
-# good for debugging and playing on macbooks and such
+# Training config: GPT-2 small (124M) from scratch on character-level protein-pair prompts (MED4 PPI).
 
 out_dir = 'out_14e'
 eval_interval = 250 # keep frequent because we'll overfit
@@ -13,7 +12,7 @@ wandb_log = True
 wandb_project = 'ppiGLM_MED4Solo'
 wandb_run_name = 'ppiGPLM-med4_4k_14epoch'
 dataset = 'med4_4k_14epoch'
-init_from = 'scratch' # this is the largest GPT-2 model
+init_from = 'scratch'  # train from random init; no pretrained GPT-2 weights loaded
 gradient_accumulation_steps = 2
 batch_size = 12
 
@@ -41,8 +40,10 @@ warmup_iters = 200 # not super necessary potentially
 # device = 'cpu'  # run on cpu only
 # compile = False # do not torch compile the model
 
-# To tenize:  python data/shakespeare_char/prepare.py
-
-# To train GPT2-S from scratch on a single GPU using training data in 'shakespear_char': python train_.py config/train_par_gpt2-s_scratch.py
-
-# To train GPT2-S from scratch on 2 GPUs using training data in 'shakespear_char': torchrun --standalone --nproc_per_node=2 train_.py config/train_par_gpt2-s_scratch.py
+# To tokenize the training data:  python data/MED4_char/prepare.py
+#
+# To train GPT-2 small from scratch on a single GPU:
+#   python train_.py config/train_par_gpt2-s_scratch.py
+#
+# To train on 2 GPUs with DDP:
+#   torchrun --standalone --nproc_per_node=2 train_.py config/train_par_gpt2-s_scratch.py

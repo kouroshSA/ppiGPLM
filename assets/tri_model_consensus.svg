@@ -65,7 +65,7 @@
   <text x="30" y="727" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
   <text x="30" y="745" class="txt" xml:space="preserve">  | Layers: 12          | Layers: 12          | Layers: 6-18        |</text>
   <text x="30" y="763" class="txt" xml:space="preserve">  | Heads:  12          | (ESM-1b config)     | (configurable)      |</text>
-  <text x="30" y="781" class="txt" xml:space="preserve">  | Dim:    768         |                     |                     |</text>
+  <text x="30" y="781" class="txt" xml:space="preserve">  | Dim:    768         | Dim: 1280 (ESM-1b)  | Dim: 1280 (ESM-1b)  |</text>
   <text x="30" y="799" class="txt" xml:space="preserve">  | Context: 4,096      | Max len: 1,024      | (ESM-1b config)     |</text>
   <text x="30" y="817" class="txt" xml:space="preserve">  +---------------------+---------------------+---------------------+</text>
   <text x="30" y="835" class="txt" xml:space="preserve">  | Optimizer:          | Optimizer:          | Optimizer:          |</text>
@@ -117,6 +117,7 @@
   <text x="30" y="1717" class="txt" xml:space="preserve">                   | (AlphaFold3 + quantum     |</text>
   <text x="30" y="1735" class="txt" xml:space="preserve">                   |  tunneling descriptors)   |</text>
   <text x="30" y="1753" class="txt" xml:space="preserve">                   +---------------------------+</text>
+  <text x="30" y="1771" class="txt" xml:space="preserve">                   ^ downstream, not in these repos</text>
   <text x="30" y="1807" class="title" xml:space="preserve">  C. WHY THREE ORTHOGONAL MODELS?</text>
   <text x="30" y="1825" class="section" xml:space="preserve">  ================================</text>
   <text x="30" y="1861" class="txt" xml:space="preserve">  Each model captures different aspects of PPI:</text>

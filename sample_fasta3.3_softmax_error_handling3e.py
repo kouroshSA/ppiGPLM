@@ -1,34 +1,24 @@
 """
-Devloped by Kourosh Salehi-Ashtiani from nanoGPT and OpenAI's GPT2 sampling scripts, with use of ChatGPT
+sample_fasta3.3_softmax_error_handling3e.py — batch inference for ppiGPLM.
 
+Loads a ckpt.pt from <model_dir> (default "out") and runs inference on a file of
+prompts (one prompt per line, no quotes), producing:
 
-# Needs a ckpt.pt in "out" directory
-# Needs a "generated_prompts.txt" with each prompt in a line with no quotations to prompt the model
-# Sampling parameters can be adjusted in this script
+  - <output_prefix>_classifications.txt : FASTA-like dump of model output
+  - <output_prefix>_probabilities.csv   : per-pair softmax probabilities for "1" and "0"
 
-Block Size Detection:
-After model initialization, the script retrieves the block size from the model’s configuration. For a checkpoint loaded with 'resume', it uses checkpoint['model_args']['block_size'], and for GPT‑2 variants it falls back to model.config.n_positions.
+Robustness:
+  - Block-size detection from checkpoint[‘model_args’][‘block_size’] (or
+    model.config.n_positions for GPT-2 variants).
+  - Input clipping: if a prompt exceeds block_size, the head is clipped
+    (start_ids = start_ids[-block_size:]) so the label position stays intact.
+  - Unknown-token replacement: out-of-vocab characters are mapped to ‘A’.
 
-Input Clipping:
-Before converting the encoded prompt to a tensor, the script checks if its length exceeds the block size. If it does, it clips the beginning of the prompt (start_ids = start_ids[-block_size:]), ensuring the end of the sequence remains intact.
-
-Sample from a trained model, safely handling unknown tokens by replacing them with 'A'.
-Handles input strings longer than the model's block size by clipping from the beginning.
-Outputs probabilities for the next token being "1" and "0".
-
-Sample from a trained model, safely handling unknown tokens by replacing them with 'A'.
-Handles input strings longer than the model's block size by clipping from the beginning.
-Outputs probabilities for the next token being "1" and "0".
-The input file and output file name prefix can be specified as command-line arguments.
-
-***usage:
-python sample_fasta3.3_softmax_error_handling3b.py --input_file my_prompts.txt --output_dir results --output_prefix myoutput
-
-***example:
-python sample_fasta3.3_softmax_error_handling3c.py --input_file MED4_100_RND_prompts.txt --output_dir ppi_out_7e --output_prefix MED4_100RND
-
-python sample_fasta3.3_softmax_error_handling3c.py --input_file MED4_Int_100pairs_prompts.txt --output_dir ppi_out_7e --output_prefix MED4_100Int
-
+Usage:
+    python sample_fasta3.3_softmax_error_handling3e.py \\
+        --input_file my_prompts.txt \\
+        --output_dir results \\
+        --output_prefix myoutput
 """
 
 import os

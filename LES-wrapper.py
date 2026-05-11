@@ -1,32 +1,25 @@
 #!/usr/bin/env python
 """
-LES-wrapper.py - Learning Efficiency Score Wrapper
+LES-wrapper.py — Learning Efficiency Score evaluation across training checkpoints.
 
-This wrapper automates the evaluation of model trainability across multiple checkpoints.
-It runs inference on PRS (Positive Reference Set) and RRS (Random Reference Set) datasets,
-performs ROC analysis, and computes Learning Efficiency Scores (LES).
+Runs inference on PRS (Positive Reference Set) and RRS (Random Reference Set)
+prompts at every saved checkpoint in a directory, computes ROC-AUC, optimal-F1
+threshold, and Best-F1 at each checkpoint, then integrates these into a single
+Learning Efficiency Score (LES) per metric — the area under the
+metric-vs-iteration curve.
 
-LES (Learning Efficiency Score) is defined as the area under the metric-vs-iteration curve,
-summarizing overall learning behavior rather than just final performance.
+Note: This script supports both vanilla GPT checkpoints (use --vanilla) and
+HOPE/Titan checkpoints (the --use_titan_in_forward, --enable_surprise_updates,
+--adapt_mode, --teach_* flags). When evaluating ppiGPLM models, use --vanilla;
+the HOPE-specific flags are no-ops for vanilla checkpoints.
 
-Usage:
-    python LES-wrapper.py \
-        --checkpoint_dir /path/to/checkpoints \
-        --prs_file prs_prompts.txt \
-        --rrs_file rrs_prompts.txt \
-        --output_dir les_results \
-        [additional sample script arguments]
-
-Example:
-    python LES-wrapper.py \
-        --checkpoint_dir out-ppiGPLM_MED4_hope-60ki_1k_384_ful \
-        --prs_file MED4_Int_100pairs_prompts.txt \
-        --rrs_file MED4_100_RND_prompts.txt \
-        --output_dir LES_results_MED4 \
-        --use_titan_in_forward=1 \
-        --enable_surprise_updates=1
-
-Developed by Claude with guidance from Kourosh Salehi-Ashtiani
+Basic usage:
+    python LES-wrapper.py \\
+        --checkpoint_dir <dir> \\
+        --prs_file <prs.txt> \\
+        --rrs_file <rrs.txt> \\
+        --output_dir <out> \\
+        --vanilla
 """
 
 import os

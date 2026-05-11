@@ -1,3 +1,4 @@
+# Optional: wandb is only imported when wandb_log=True is set in the training config.
 torch>=2.0
 numpy
 tqdm
