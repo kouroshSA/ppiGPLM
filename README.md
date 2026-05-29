@@ -90,25 +90,54 @@ ppiGPLM/
 
 ## Usage
 
-### Prompt Format
+### Quick start: fetch the checkpoint from Hugging Face
 
-Each prompt encodes a protein pair with metadata tags:
+The released MED4 checkpoint (`checkpoints/ppiGPLM_ckpt_7e.pt`, epoch ≈ 71)
+lives on this Hugging Face repo. To pull it without cloning the GitHub
+mirror:
+
+```python
+from huggingface_hub import hf_hub_download
+
+ckpt_path = hf_hub_download(
+    repo_id="kouroshSA/ppiGPLM",
+    filename="checkpoints/ppiGPLM_ckpt_7e.pt",
+)
+meta_path = hf_hub_download(
+    repo_id="kouroshSA/ppiGPLM",
+    filename="data/MED4_char/meta.pkl",
+)
+```
+
+`meta.pkl` carries the character vocabulary (`stoi`/`itos`) the inference
+script needs to encode protein sequences.
+
+### Input file format
+
+Each line of `--input_file` is one structured prompt (one protein pair),
+not a free-form FASTA record. The schema is:
 
 ```
-<ps1>,MSEQ1...,<ps2>,MSEQ2...,<l1>,len1,<l2>,len2,<l3>
+<ps1>,SEQ_A,<ps2>,SEQ_B,<l1>,LEN_A,<l2>,LEN_B,<l3>,<
 ```
 
-- `<ps1>`, `<ps2>`: Protein sequence delimiters
-- `<l1>`, `<l2>`, `<l3>`: Length field delimiters
-- The model predicts `1` (interacting) or `0` (non-interacting) as the next token
+- `<ps1>`, `<ps2>`: protein-sequence delimiter tokens
+- `<l1>`, `<l2>`, `<l3>`: length-field delimiter tokens
+- The trailing `,<` is **the cue**: it tells the model the next token to
+  generate is the classification label (`1` = interacting, `0` = not).
+  Don't omit it.
+
+A ready-made example is shipped with the repo:
+[`MED4-PPIs-low-confidence_ppiGPLM_prompts.csv`](MED4-PPIs-low-confidence_ppiGPLM_prompts.csv)
+— inspect or copy its format when building your own input file.
 
 ### Batch Inference
 
-Run inference on a set of protein pairs:
+Run inference on a file of prompts:
 
 ```bash
 python sample_fasta3.3_softmax_error_handling3e.py \
-    --input_file protein_pairs.txt \
+    --input_file MED4-PPIs-low-confidence_ppiGPLM_prompts.csv \
     --output_dir ppi_results \
     --output_prefix my_predictions
 ```
@@ -116,6 +145,28 @@ python sample_fasta3.3_softmax_error_handling3e.py \
 This produces:
 - `*_classifications.txt`: Full model output in FASTA-like format
 - `*_probabilities.csv`: Per-pair probabilities for class 1 and class 0
+
+#### About the inference script
+
+`sample_fasta3.3_softmax_error_handling3e.py` is derived from Karpathy's
+nanoGPT `sample.py` — it reuses the same `GPTConfig`/`GPT` classes from
+`model.py`, the `init_from = 'resume'` checkpoint-loading idiom, and the
+`_orig_mod.` prefix strip for `torch.compile`-wrapped state dicts. It is
+**not** a drop-in copy, however. The modifications make it a batch
+classifier rather than a generic sampler:
+
+- batch input: one prompt per line read from `--input_file`, processed
+  sequentially with no interactive loop;
+- classifier-style output: per-prompt softmax probabilities of the next
+  token being `"1"` vs `"0"`, written to `*_probabilities.csv` alongside
+  the conventional `generate()` output dump in `*_classifications.txt`;
+- robustness against real-world inputs: automatic block-size detection
+  (`checkpoint['model_args']['block_size']` or
+  `model.config.n_positions`), head-clipping when a prompt exceeds the
+  context window so the trailing `<` label-cue token survives, and
+  out-of-vocabulary character replacement (defaults to `A`).
+
+The lineage is **GPT-2 → nanoGPT → ppiGPLM's batch-classifier sampler**.
 
 ### Training
 
