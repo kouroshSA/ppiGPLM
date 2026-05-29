@@ -1,6 +1,9 @@
 # Model checkpoints (too large for GitHub)
 out/ckpt.pt
 *.pt
+# Released checkpoints under checkpoints/ are tracked (on Hugging Face)
+!checkpoints/*.pt
+!checkpoints/*.pth
 
 # Large data files
 data/*/input.txt

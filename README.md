@@ -1,6 +1,22 @@
+---
+license: mit
+library_name: pytorch
+tags:
+  - protein-protein-interaction
+  - ppi
+  - protein-language-model
+  - gpt-2
+  - nanogpt
+  - character-level
+  - trained-from-scratch
+  - bioinformatics
+  - biology
+pipeline_tag: text-generation
+---
+
 # ppiGPLM
 
-A GPT-2-based protein language model repurposed for binary protein-protein interaction (PPI) classification. Built on [nanoGPT](https://github.com/karpathy/nanoGPT) by Andrej Karpathy.
+A GPT-2 small protein language model trained from scratch on protein-pair prompts and used for binary protein-protein interaction (PPI) classification via next-token prediction. The implementation is based on [nanoGPT](https://github.com/karpathy/nanoGPT) by Andrej Karpathy, with character-level tokenization over amino acids.
 
 ![ppiGPLM](assets/ppiGPLM.png)
 
