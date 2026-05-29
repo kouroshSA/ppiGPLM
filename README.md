@@ -112,6 +112,45 @@ meta_path = hf_hub_download(
 `meta.pkl` carries the character vocabulary (`stoi`/`itos`) the inference
 script needs to encode protein sequences.
 
+#### Wiring the checkpoint into the inference script
+
+`sample_fasta3.3_softmax_error_handling3e.py` loads from
+`<model_dir>/ckpt.pt`, where `model_dir = 'out'` is set inline near the
+top of the script and the trailing `ckpt.pt` filename is **hardcoded**.
+Two ways to make the downloaded file work:
+
+**Option A — place the file where the defaults expect it:**
+
+```bash
+mkdir -p out
+cp /path/to/ppiGPLM_ckpt_7e.pt out/ckpt.pt   # note the required rename
+```
+
+then run the inference command below as-is.
+
+**Option B — override `model_dir` via the poor-man's configurator
+(`configurator.py`):**
+
+```bash
+mkdir -p my_ckpts
+cp /path/to/ppiGPLM_ckpt_7e.pt my_ckpts/ckpt.pt   # still needs to be ckpt.pt
+python sample_fasta3.3_softmax_error_handling3e.py \
+    --input_file MED4-PPIs-low-confidence_ppiGPLM_prompts.csv \
+    --output_dir ppi_results \
+    --output_prefix my_predictions \
+    --model_dir=my_ckpts
+```
+
+Either way, the on-disk filename must be `ckpt.pt`; editing it out of the
+script is also possible (change the `model_dir` default near the top, or
+the literal `'ckpt.pt'` further down) but the rename above is simpler.
+
+The character vocabulary (`meta.pkl`) is read from
+`data/<dataset>/meta.pkl`, where `<dataset>` comes from
+`checkpoint['config']['dataset']` (`MED4_char` for this checkpoint). Make
+sure that path exists — either keep the `data/MED4_char/` directory from
+the GitHub clone, or place the downloaded `meta_path` there.
+
 ### Input file format
 
 Each line of `--input_file` is one structured prompt (one protein pair),
