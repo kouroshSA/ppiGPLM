@@ -9,7 +9,7 @@
 | Model | ppiGPLM (GPT-2 small, character-level tokenization, trained from scratch on protein-pair prompts) |
 | Architecture | 12 layers, 12 attention heads, 768 emb dim, 4,096 token context |
 | File size | ~1009 MB |
-| Training run | `out_7e` |
+| Training run | `out_7e` — epoch 70.94 (≈ epoch 71) |
 | Training data | MED4 PPI dataset (`data/MED4_char/`) — prepared by `data/MED4_char/prepare.py` from the project's input CSV/TXT |
 | Tokenization | Per-amino-acid characters (one token per residue), prompts wrapped with `<ps1>`, `<ps2>`, `<l1>`, `<l2>`, `<l3>` delimiter tokens |
 
