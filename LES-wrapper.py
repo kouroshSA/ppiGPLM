@@ -8,18 +8,15 @@ threshold, and Best-F1 at each checkpoint, then integrates these into a single
 Learning Efficiency Score (LES) per metric — the area under the
 metric-vs-iteration curve.
 
-Note: This script supports both vanilla GPT checkpoints (use --vanilla) and
-HOPE/Titan checkpoints (the --use_titan_in_forward, --enable_surprise_updates,
---adapt_mode, --teach_* flags). When evaluating ppiGPLM models, use --vanilla;
-the HOPE-specific flags are no-ops for vanilla checkpoints.
+ppiGPLM is a vanilla GPT-2 model (no HOPE/Titan/CMS). Inference is run with
+sample_fasta3.3_softmax_error_handling3f.py, the plain vanilla sampler.
 
 Basic usage:
     python LES-wrapper.py \\
         --checkpoint_dir <dir> \\
         --prs_file <prs.txt> \\
         --rrs_file <rrs.txt> \\
-        --output_dir <out> \\
-        --vanilla
+        --output_dir <out>
 """
 
 import os
@@ -36,6 +33,30 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, f1_score
 
 # -----------------------------------------------------------------------------
+# Publication-quality figure defaults
+# -----------------------------------------------------------------------------
+PUB_DPI = 600
+
+def set_publication_style():
+    """Apply consistent, publication-quality matplotlib defaults (300 dpi,
+    tight bounding box, larger readable fonts, heavier axis lines)."""
+    plt.rcParams.update({
+        'savefig.dpi': PUB_DPI,
+        'savefig.bbox': 'tight',
+        'savefig.pad_inches': 0.05,
+        'font.family': 'DejaVu Sans',
+        'font.size': 13,
+        'axes.titlesize': 16,
+        'axes.labelsize': 15,
+        'axes.linewidth': 1.2,
+        'xtick.labelsize': 12,
+        'ytick.labelsize': 12,
+        'legend.fontsize': 12,
+        'lines.linewidth': 2.5,
+        'lines.markersize': 7,
+    })
+
+# -----------------------------------------------------------------------------
 # Parse command-line arguments
 # -----------------------------------------------------------------------------
 def parse_args():
@@ -45,7 +66,7 @@ def parse_args():
         epilog="""
 Examples:
   python LES-wrapper.py --checkpoint_dir out-model --prs_file prs.txt --rrs_file rrs.txt --output_dir results
-  python LES-wrapper.py --checkpoint_dir out-model --prs_file prs.txt --rrs_file rrs.txt --use_titan_in_forward=1
+  python LES-wrapper.py --checkpoint_dir out-model --prs_file prs.txt --rrs_file rrs.txt --output_dir results --color_threshold
         """
     )
 
@@ -69,48 +90,16 @@ Examples:
     parser.add_argument('--include_final', action='store_true',
                         help='Also include ckpt.pt (final checkpoint) if present')
 
-    # Titan/HOPE arguments (passed to sample script)
-    parser.add_argument('--use_titan_in_forward', type=int, default=-1,
-                        help='Override use_titan_in_forward (-1=use checkpoint value)')
-    parser.add_argument('--enable_surprise_updates', type=int, default=0,
-                        help='Enable Titan surprise updates (0/1)')
-    parser.add_argument('--surprise_update_in_eval', type=int, default=0,
-                        help='Allow memory updates during eval (0/1)')
-    parser.add_argument('--adapt_mode', type=str, default='none',
-                        choices=['none', 'prefix'], help='Adaptation mode')
-    parser.add_argument('--adapt_steps', type=int, default=0,
-                        help='Number of adaptation steps (0=disabled). When --teach_file is provided, this means teaching epochs.')
-
-    # Memory state
-    parser.add_argument('--memory_state_in', type=str, default='',
-                        help='Path to load memory-only state file')
-
-    # Teaching file arguments
-    parser.add_argument('--teach_file', type=str, default='',
-                        help='Path to teaching CSV file for supervised adaptation')
-    parser.add_argument('--teach_delim', type=str, default='|',
-                        help='Delimiter for teaching CSV (default: |)')
-    parser.add_argument('--teach_has_header', type=int, default=1,
-                        help='Whether teaching CSV has header row (default: 1)')
-    parser.add_argument('--teach_reset_policy', type=str, default='pair',
-                        choices=['pair', 'file', 'none'],
-                        help='Memory reset policy during teaching')
-    parser.add_argument('--teach_shuffle', type=int, default=1,
-                        help='Shuffle teaching examples each epoch (default: 1)')
-    parser.add_argument('--teach_max_rows', type=int, default=0,
-                        help='Limit number of teaching rows loaded (0=all)')
-
-    # Parallel processing
+    # Control flow
     parser.add_argument('--skip_inference', action='store_true',
                         help='Skip inference step (use existing probability files)')
 
     # Plotting options
     parser.add_argument('--no_plots', action='store_true',
                         help='Skip generating trajectory plots')
-
-    # Vanilla mode (use standard GPT model without HOPE features)
-    parser.add_argument('--vanilla', action='store_true',
-                        help='Use vanilla GPT model (no HOPE/CMS/Titan features)')
+    parser.add_argument('--color_threshold', action='store_true',
+                        help='Color the ROC curve by decision threshold and add a '
+                             'colorbar (default: plain single-color curve, no scale)')
 
     return parser.parse_known_args()
 
@@ -149,13 +138,8 @@ def get_checkpoints(checkpoint_dir, pattern, include_final=False):
     return checkpoints
 
 def run_inference(sample_script, model_dir, ckpt_name, input_file, output_dir,
-                  output_prefix, extra_args, vanilla=False):
-    """Run inference using the sample script.
-
-    Both vanilla and HOPE models use the same sample script (sample_fasta3.3_softmax_error_handling3e_hope_v3.py)
-    since models trained with train_hope_v3.py --vanilla use the same checkpoint format.
-    The vanilla flag just controls whether HOPE-specific args are passed.
-    """
+                  output_prefix, extra_args):
+    """Run inference using the vanilla-GPT sample script."""
     cmd = [
         sys.executable, sample_script,
         '--input_file', input_file,
@@ -216,7 +200,7 @@ def combine_probabilities(prs_probs, rrs_probs, output_path):
 
     return output_path
 
-def run_roc_analysis_internal(combined_csv_path, output_plot_path):
+def run_roc_analysis_internal(combined_csv_path, output_plot_path, color_threshold=False):
     """Run ROC analysis and return metrics (internal implementation)."""
     # Read probabilities
     prs_probs = []
@@ -268,39 +252,39 @@ def run_roc_analysis_internal(combined_csv_path, output_plot_path):
             best_f1 = current_f1
             best_thresh = thresh
 
-    # Generate ROC plot using figure and axes approach (like original roc.py)
-    fig, ax = plt.subplots(figsize=(10, 8))
-    plt.rcParams['font.family'] = 'DejaVu Sans'  # More portable than Arial
+    # ROC plot. Default: clean single-color curve. With color_threshold: the
+    # curve is colored by decision threshold and a colorbar is added.
+    fig, ax = plt.subplots(figsize=(7.5, 6.5))
 
-    # Color-coded by threshold
-    norm = plt.Normalize(vmin=thresholds.min(), vmax=thresholds.max())
-    cmap = plt.cm.viridis
+    if color_threshold:
+        norm = plt.Normalize(vmin=thresholds.min(), vmax=thresholds.max())
+        cmap = plt.cm.viridis
+        for i in range(len(fpr) - 1):
+            ax.plot(fpr[i:i + 2], tpr[i:i + 2], color=cmap(norm(thresholds[i])), lw=2.5)
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax)
+        cbar.set_label('Threshold', fontsize=15)
+    else:
+        ax.plot(fpr, tpr, color='#08519c', lw=2.5)
 
-    for i in range(len(fpr) - 1):
-        x = fpr[i:i + 2]
-        y = tpr[i:i + 2]
-        z = thresholds[i]
-        ax.plot(x, y, color=cmap(norm(z)), lw=2.5)
-
-    ax.plot([0, 1], [0, 1], color='gray', lw=2, linestyle='--')
-
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax)
-    cbar.set_label('Threshold', fontsize=14)
+    ax.plot([0, 1], [0, 1], color='gray', lw=1.5, linestyle='--')
 
     ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('False Positive Rate', fontsize=14)
-    ax.set_ylabel('True Positive Rate', fontsize=14)
-    ax.set_title('ROC Curve', fontsize=16)
+    ax.set_ylim([0.0, 1.02])
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.set_title('ROC Curve')
 
-    legend_text = f'AUC = {roc_auc:.3f}, Best F1 = {best_f1:.3f}, Threshold = {best_thresh:.3f}'
-    ax.legend([legend_text], loc="lower right", fontsize=11)
+    # Per request: show only AUC and Best F1 on the curve (no threshold value).
+    legend_text = f'AUC = {roc_auc:.3f}, Best F1 = {best_f1:.3f}'
+    ax.legend([legend_text], loc="lower right")
     ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
 
     plt.tight_layout()
-    plt.savefig(output_plot_path, dpi=150, format='png')
+    plt.savefig(output_plot_path, dpi=PUB_DPI, format='png')
+    # Also emit a vector PDF (scalable, no pixelation) for publication.
+    plt.savefig(os.path.splitext(output_plot_path)[0] + '.pdf', format='pdf')
     plt.close(fig)
 
     return roc_auc, best_f1, best_thresh
@@ -355,7 +339,8 @@ def plot_metric_trajectory(iterations, values, metric_name, output_path, les_val
                         xytext=(0, 10), ha='center', fontsize=9)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150)
+    plt.savefig(output_path, dpi=PUB_DPI)
+    plt.savefig(os.path.splitext(output_path)[0] + '.pdf', format='pdf')
     plt.close()
 
 def plot_combined_trajectories(iterations, auc_vals, f1_vals, thresh_vals, output_path, les_values):
@@ -397,7 +382,8 @@ def plot_combined_trajectories(iterations, auc_vals, f1_vals, thresh_vals, outpu
     axes[2].set_ylim([0, 1.05])
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150)
+    plt.savefig(output_path, dpi=PUB_DPI)
+    plt.savefig(os.path.splitext(output_path)[0] + '.pdf', format='pdf')
     plt.close()
 
 # -----------------------------------------------------------------------------
@@ -405,6 +391,8 @@ def plot_combined_trajectories(iterations, auc_vals, f1_vals, thresh_vals, outpu
 # -----------------------------------------------------------------------------
 def main():
     args, extra_args = parse_args()
+
+    set_publication_style()
 
     # Validate inputs
     if not os.path.exists(args.checkpoint_dir):
@@ -422,13 +410,11 @@ def main():
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Find sample script
-    # Note: Both vanilla and HOPE models trained with train_hope_v3.py use the same
-    # checkpoint format, so we always use the HOPE sample script. For vanilla models,
-    # we just skip the HOPE-specific arguments (Titan, surprise updates, etc.)
+    # Find sample script. ppiGPLM is a vanilla GPT-2 model (no HOPE/Titan/CMS),
+    # so we use the plain vanilla inference script.
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    sample_script = os.path.join(script_dir, 'sample_fasta3.3_softmax_error_handling3e_hope_v3.py')
-    model_type = "Vanilla GPT (trained with train_hope_v3.py)" if args.vanilla else "HOPE"
+    sample_script = os.path.join(script_dir, 'sample_fasta3.3_softmax_error_handling3f.py')
+    model_type = "Vanilla GPT"
 
     if not os.path.exists(sample_script):
         print(f"ERROR: Sample script not found: {sample_script}")
@@ -452,35 +438,8 @@ def main():
     print(f"Found {len(checkpoints)} checkpoints")
     print(f"{'='*60}\n")
 
-    # Build extra args for sample script (only for HOPE models)
-    sample_extra_args = []
-    if not args.vanilla:
-        # HOPE-specific arguments
-        if args.use_titan_in_forward >= 0:
-            sample_extra_args.extend(['--use_titan_in_forward', str(args.use_titan_in_forward)])
-        if args.enable_surprise_updates:
-            sample_extra_args.extend(['--enable_surprise_updates', str(args.enable_surprise_updates)])
-        if args.surprise_update_in_eval:
-            sample_extra_args.extend(['--surprise_update_in_eval', str(args.surprise_update_in_eval)])
-        if args.adapt_mode != 'none':
-            sample_extra_args.extend(['--adapt_mode', args.adapt_mode])
-        if args.adapt_steps > 0:
-            sample_extra_args.extend(['--adapt_steps', str(args.adapt_steps)])
-        if args.memory_state_in:
-            sample_extra_args.extend(['--memory_state_in', args.memory_state_in])
-
-        # Teaching file arguments
-        if args.teach_file:
-            sample_extra_args.extend(['--teach_file', args.teach_file])
-            sample_extra_args.extend(['--teach_delim', args.teach_delim])
-            sample_extra_args.extend(['--teach_has_header', str(args.teach_has_header)])
-            sample_extra_args.extend(['--teach_reset_policy', args.teach_reset_policy])
-            sample_extra_args.extend(['--teach_shuffle', str(args.teach_shuffle)])
-            if args.teach_max_rows > 0:
-                sample_extra_args.extend(['--teach_max_rows', str(args.teach_max_rows)])
-
-    # Add any extra arguments passed through
-    sample_extra_args.extend(extra_args)
+    # Any extra arguments passed through to the sample script.
+    sample_extra_args = list(extra_args)
 
     # Results storage
     results = []
@@ -508,16 +467,14 @@ def main():
             # Run inference for PRS
             print(f"  Running PRS inference...")
             if not run_inference(sample_script, args.checkpoint_dir, ckpt_name,
-                               args.prs_file, ckpt_subdir, prs_prefix, sample_extra_args,
-                               vanilla=args.vanilla):
+                               args.prs_file, ckpt_subdir, prs_prefix, sample_extra_args):
                 print(f"  SKIPPING checkpoint due to inference error")
                 continue
 
             # Run inference for RRS
             print(f"  Running RRS inference...")
             if not run_inference(sample_script, args.checkpoint_dir, ckpt_name,
-                               args.rrs_file, ckpt_subdir, rrs_prefix, sample_extra_args,
-                               vanilla=args.vanilla):
+                               args.rrs_file, ckpt_subdir, rrs_prefix, sample_extra_args):
                 print(f"  SKIPPING checkpoint due to inference error")
                 continue
 
@@ -539,7 +496,8 @@ def main():
         # Run ROC analysis
         print(f"  Running ROC analysis...")
         roc_plot = os.path.join(ckpt_subdir, f"ROC_iter{iter_str}.png")
-        roc_auc, best_f1, best_thresh = run_roc_analysis_internal(combined_csv, roc_plot)
+        roc_auc, best_f1, best_thresh = run_roc_analysis_internal(
+            combined_csv, roc_plot, color_threshold=args.color_threshold)
 
         if roc_auc is None:
             print(f"  WARNING: ROC analysis failed, skipping")

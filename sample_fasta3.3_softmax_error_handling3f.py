@@ -1,24 +1,38 @@
 """
-sample_fasta3.3_softmax_error_handling3e.py — batch inference for ppiGPLM.
+sample_fasta3.3_softmax_error_handling3f.py — batch inference for ppiGPLM (vanilla GPT).
 
-Loads a ckpt.pt from <model_dir> (default "out") and runs inference on a file of
-prompts (one prompt per line, no quotes), producing:
+This is the 3f revision of sample_fasta3.3_softmax_error_handling3e.py. It is a
+pure vanilla-GPT inference script (no HOPE / Titan / CMS features). Two changes
+over 3e make it usable from LES-wrapper.py, which evaluates many checkpoints in
+one directory:
 
+  1. --model_dir and --ckpt_name command-line arguments, so any checkpoint file
+     (e.g. ckpt_1000.pt) in any directory can be selected. 3e hardcoded
+     out/ckpt.pt.
+
+  2. meta.pkl fallback. The checkpoint's stored dataset name may be a stale
+     nanoGPT default (e.g. 'shakespeare_char') whose meta.pkl is absent. When the
+     config-derived path is missing we fall back to data/MED4_char/meta.pkl (the
+     ppiGPLM character vocabulary).
+
+Outputs (unchanged from 3e):
   - <output_prefix>_classifications.txt : FASTA-like dump of model output
   - <output_prefix>_probabilities.csv   : per-pair softmax probabilities for "1" and "0"
 
 Robustness:
-  - Block-size detection from checkpoint[‘model_args’][‘block_size’] (or
+  - Block-size detection from checkpoint['model_args']['block_size'] (or
     model.config.n_positions for GPT-2 variants).
   - Input clipping: if a prompt exceeds block_size, the head is clipped
     (start_ids = start_ids[-block_size:]) so the label position stays intact.
-  - Unknown-token replacement: out-of-vocab characters are mapped to ‘A’.
+  - Unknown-token replacement: out-of-vocab characters are mapped to 'A'.
 
 Usage:
-    python sample_fasta3.3_softmax_error_handling3e.py \\
+    python sample_fasta3.3_softmax_error_handling3f.py \\
         --input_file my_prompts.txt \\
         --output_dir results \\
-        --output_prefix myoutput
+        --output_prefix myoutput \\
+        --model_dir checkpoints \\
+        --ckpt_name ckpt_7.pt
 """
 
 import os
@@ -33,11 +47,13 @@ from model import GPTConfig, GPT
 # -----------------------------------------------------------------------------
 # Parse command-line arguments
 # -----------------------------------------------------------------------------
-parser = argparse.ArgumentParser(description='Sample from a trained model with prompt input.')
+parser = argparse.ArgumentParser(description='Sample from a trained vanilla GPT model with prompt input.')
 parser.add_argument('--input_file', type=str, default='generated_prompts.txt', help='Path to file containing prompts')
 parser.add_argument('--output_dir', type=str, default='out-ppi', help='Directory to save outputs')
 parser.add_argument('--output_prefix', type=str, default='generated', help='Prefix for output files')
-args = parser.parse_args()
+parser.add_argument('--model_dir', type=str, default='out', help='Directory containing the checkpoint (default: out)')
+parser.add_argument('--ckpt_name', type=str, default='ckpt.pt', help='Checkpoint filename (default: ckpt.pt)')
+args, _ = parser.parse_known_args()
 
 # Reset sys.argv for configurator
 sys.argv = [sys.argv[0]]
@@ -53,7 +69,8 @@ csv_output_filename = os.path.join(output_dir, args.output_prefix + '_probabilit
 # Sampling parameters and model init overrides
 # -----------------------------------------------------------------------------
 init_from = 'resume'  # or a GPT-2 variant
-model_dir = 'out'
+model_dir = args.model_dir
+ckpt_name = args.ckpt_name
 max_new_tokens = 1
 temperature = 0.1
 top_k = 2
@@ -75,7 +92,7 @@ ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=
 # Model Initialization
 # -----------------------------------------------------------------------------
 if init_from == 'resume':
-    ckpt_path = os.path.join(model_dir, 'ckpt.pt')
+    ckpt_path = os.path.join(model_dir, ckpt_name)
     checkpoint = torch.load(ckpt_path, map_location=device)
     gptconf = GPTConfig(**checkpoint['model_args'])
     model = GPT(gptconf)
@@ -100,7 +117,14 @@ if compile:
 # -----------------------------------------------------------------------------
 meta_path = os.path.join('data', checkpoint['config']['dataset'], 'meta.pkl')
 if not os.path.exists(meta_path):
-    raise FileNotFoundError(f'Meta file not found: {meta_path}')
+    # The checkpoint's stored dataset name may be a stale nanoGPT default
+    # (e.g. 'shakespeare_char'). Fall back to the ppiGPLM character vocab.
+    fallback_meta = os.path.join('data', 'MED4_char', 'meta.pkl')
+    if os.path.exists(fallback_meta):
+        print(f"Meta file not found at {meta_path}; falling back to {fallback_meta}")
+        meta_path = fallback_meta
+    else:
+        raise FileNotFoundError(f'Meta file not found: {meta_path}')
 with open(meta_path, 'rb') as meta_file:
     meta = pickle.load(meta_file)
 stoi = meta['stoi']
@@ -131,7 +155,7 @@ def format_as_fasta(sequence, sample_number):
 # -----------------------------------------------------------------------------
 with open(fasta_output_filename, 'w', encoding='utf-8') as fasta_file, \
      open(csv_output_filename, 'w', encoding='utf-8') as csv_file:
-    csv_file.write('l1,Seq1,l2,Seq2,l3,Probability_of_1,Probability_of_0\n')
+    csv_file.write('Prompt,Probability_of_1,Probability_of_0\n')
     with torch.no_grad():
         with ctx:
             for k, prompt in enumerate(prompts):
