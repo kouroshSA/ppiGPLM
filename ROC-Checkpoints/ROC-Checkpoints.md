@@ -34,24 +34,24 @@ computed at every saved iteration and integrated into a single LES per metric
 
 ## Download (Hugging Face)
 
-> **Placeholder — update after upload.** These trajectory checkpoints are large
-> (~34 GB total) and are hosted on Hugging Face rather than in this Git
-> repository. Once uploaded to the account, replace the repo ID below with the
-> real one and remove this note.
+These trajectory checkpoints are large (~34 GB total, 33 × ~1.06 GB) and are
+hosted on Hugging Face rather than in this Git repository. They live in the
+`ROC-Checkpoints/` folder of the main model repo
+[kouroshSA/ppiGPLM](https://huggingface.co/kouroshSA/ppiGPLM/tree/main/ROC-Checkpoints).
 
 ```bash
-# placeholder repo id — revise once the checkpoints are uploaded
-huggingface-cli download kouroshSA/ppiGPLM-ROC-checkpoints \
-    --local-dir ROC-Checkpoints --repo-type model
+# Download just the ROC-Checkpoints folder into ./ROC-Checkpoints
+hf download kouroshSA/ppiGPLM --repo-type model \
+    --include "ROC-Checkpoints/*" --local-dir .
 ```
 
 ```python
-# placeholder repo id — revise once the checkpoints are uploaded
 from huggingface_hub import snapshot_download
 snapshot_download(
-    repo_id="kouroshSA/ppiGPLM-ROC-checkpoints",   # <-- update after upload
-    local_dir="ROC-Checkpoints",
+    repo_id="kouroshSA/ppiGPLM",
     repo_type="model",
+    allow_patterns="ROC-Checkpoints/*",
+    local_dir=".",
 )
 ```
 
