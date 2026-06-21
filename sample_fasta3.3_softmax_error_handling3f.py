@@ -75,13 +75,22 @@ max_new_tokens = 1
 temperature = 0.1
 top_k = 2
 seed = int.from_bytes(os.urandom(4), 'big')
-device = 'cuda'
-dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16'
+# Device auto-detection with optional override. CUDA when present, else CPU.
+# configurator.py can't reach this (sys.argv was reset above), so we resolve the
+# default here: honour an explicit PPIGPLM_DEVICE, otherwise probe for CUDA.
+device = os.environ.get('PPIGPLM_DEVICE') or ('cuda' if torch.cuda.is_available() else 'cpu')
+# On CPU, run in float32 (autocast is bypassed for cpu below); fp16 on CPU is
+# poorly supported. On CUDA, prefer bf16 when supported, else fp16.
+if 'cuda' in device and torch.cuda.is_available():
+    dtype = 'bfloat16' if torch.cuda.is_bf16_supported() else 'float16'
+else:
+    dtype = 'float32'
 compile = False
 exec(open('configurator.py').read())  # overrides from command line or config file
 
 torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(seed)
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 device_type = 'cuda' if 'cuda' in device else 'cpu'

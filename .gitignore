@@ -26,6 +26,9 @@ __pycache__/
 *_classifications.txt
 LES_results*/
 
+# A2S2-OS run artifacts (written here when driven from the A2S2-OS shell)
+a2s2_runs/
+
 # OS files
 .DS_Store
 Thumbs.db
