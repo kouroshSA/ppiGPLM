@@ -35,3 +35,7 @@ Thumbs.db
 
 # Wandb logs
 wandb/
+
+# Superseded by LES-wrapper_v2.py/.md (removed from the repo, kept locally)
+/LES-wrapper.py
+/LES-wrapper.md

@@ -1,18 +1,25 @@
 #!/usr/bin/env python
 """
-LES-wrapper.py — Learning Efficiency Score evaluation across training checkpoints.
+LES-wrapper_v2.py — Learning Efficiency Score evaluation across training checkpoints.
 
 Runs inference on PRS (Positive Reference Set) and RRS (Random Reference Set)
-prompts at every saved checkpoint in a directory, computes ROC-AUC, optimal-F1
-threshold, and Best-F1 at each checkpoint, then integrates these into a single
-Learning Efficiency Score (LES) per metric — the area under the
-metric-vs-iteration curve.
+prompts at every saved checkpoint in a directory, computes ROC-AUC and Best-F1 at
+each checkpoint, then integrates these into a single Learning Efficiency Score
+(LES) per metric — the area under the metric-vs-iteration curve.
+
+v2 change vs LES-wrapper.py: the optimal-F1 *threshold* metric is no longer
+reported. The best-F1 threshold was a degenerate/uninformative diagnostic (for
+non-discriminating controls it collapses toward 0, i.e. "predict everything
+positive"), so it added noise to the report. Removed here: the trajectory_Threshold
+plot, LES-Threshold, the Best_F1_Threshold summary column, the manifest Threshold
+entry, and the threshold panel of the combined figure. ROC-AUC and Best-F1 (and how
+they are computed) are unchanged.
 
 ppiGPLM is a vanilla GPT-2 model (no HOPE/Titan/CMS). Inference is run with
 sample_fasta3.3_softmax_error_handling3f.py, the plain vanilla sampler.
 
 Basic usage:
-    python LES-wrapper.py \\
+    python LES-wrapper_v2.py \\
         --checkpoint_dir <dir> \\
         --prs_file <prs.txt> \\
         --rrs_file <rrs.txt> \\
@@ -65,8 +72,8 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python LES-wrapper.py --checkpoint_dir out-model --prs_file prs.txt --rrs_file rrs.txt --output_dir results
-  python LES-wrapper.py --checkpoint_dir out-model --prs_file prs.txt --rrs_file rrs.txt --output_dir results --color_threshold
+  python LES-wrapper_v2.py --checkpoint_dir out-model --prs_file prs.txt --rrs_file rrs.txt --output_dir results
+  python LES-wrapper_v2.py --checkpoint_dir out-model --prs_file prs.txt --rrs_file rrs.txt --output_dir results --color_threshold
         """
     )
 
@@ -201,7 +208,7 @@ def combine_probabilities(prs_probs, rrs_probs, output_path):
     return output_path
 
 def run_roc_analysis_internal(combined_csv_path, output_plot_path, color_threshold=False):
-    """Run ROC analysis and return metrics (internal implementation)."""
+    """Run ROC analysis and return (roc_auc, best_f1)."""
     # Read probabilities
     prs_probs = []
     rrs_probs = []
@@ -218,7 +225,7 @@ def run_roc_analysis_internal(combined_csv_path, output_plot_path, color_thresho
                     rrs_probs.append(float(rrs_val))
 
     if not prs_probs or not rrs_probs:
-        return None, None, None
+        return None, None
 
     # Assign labels (PRS = 1, RRS = 0)
     prs_labels = [1] * len(prs_probs)
@@ -231,7 +238,7 @@ def run_roc_analysis_internal(combined_csv_path, output_plot_path, color_thresho
     fpr, tpr, thresholds = roc_curve(labels, probs)
     roc_auc = auc(fpr, tpr)
 
-    # Filter valid thresholds
+    # Filter valid thresholds (only used for the optional color-by-threshold ROC plot)
     finite_idxs = np.where(np.isfinite(thresholds))[0]
     fpr = fpr[finite_idxs]
     tpr = tpr[finite_idxs]
@@ -243,18 +250,14 @@ def run_roc_analysis_internal(combined_csv_path, output_plot_path, color_thresho
     thresholds = thresholds[valid_thresholds_idxs]
 
     # Best F1 over ALL candidate thresholds — every unique score, not just the
-    # ROC vertices. roc_curve(drop_intermediate=True) prunes collinear vertices
-    # from `thresholds`; scanning the full unique-score set guarantees the true
-    # F1-optimal cutoff is considered. Decision rule: prob >= threshold =>
-    # positive (matches roc_curve / the screening pipeline). Among ties, the
-    # highest (most stringent) threshold is kept.
+    # ROC vertices. roc_curve(drop_intermediate=True) prunes collinear vertices;
+    # scanning the full unique-score set guarantees the true F1-optimal cutoff is
+    # considered. Decision rule: prob >= threshold => positive.
     best_f1 = -1.0
-    best_thresh = None
     for thresh in np.unique(probs):
         current_f1 = f1_score(labels, (probs >= thresh).astype(int), zero_division=0)
         if current_f1 >= best_f1:
             best_f1 = current_f1
-            best_thresh = float(thresh)
 
     # ROC plot. Default: clean single-color curve. With color_threshold: the
     # curve is colored by decision threshold and a colorbar is added.
@@ -280,7 +283,7 @@ def run_roc_analysis_internal(combined_csv_path, output_plot_path, color_thresho
     ax.set_ylabel('True Positive Rate')
     ax.set_title('ROC Curve')
 
-    # Per request: show only AUC and Best F1 on the curve (no threshold value).
+    # Show AUC and Best F1 on the curve.
     legend_text = f'AUC = {roc_auc:.3f}, Best F1 = {best_f1:.3f}'
     ax.legend([legend_text], loc="lower right")
     ax.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
@@ -291,7 +294,7 @@ def run_roc_analysis_internal(combined_csv_path, output_plot_path, color_thresho
     plt.savefig(os.path.splitext(output_plot_path)[0] + '.pdf', format='pdf')
     plt.close(fig)
 
-    return roc_auc, best_f1, best_thresh
+    return roc_auc, best_f1
 
 def compute_les(iterations, values):
     """Compute Learning Efficiency Score (area under curve)."""
@@ -347,16 +350,15 @@ def plot_metric_trajectory(iterations, values, metric_name, output_path, les_val
     plt.savefig(os.path.splitext(output_path)[0] + '.pdf', format='pdf')
     plt.close()
 
-def plot_combined_trajectories(iterations, auc_vals, f1_vals, thresh_vals, output_path, les_values):
-    """Plot all metrics on a single figure."""
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+def plot_combined_trajectories(iterations, auc_values, f1_values, output_path, les_values):
+    """Plot AUC and Best-F1 metrics on a single figure."""
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5))
 
     # Filter out inf iterations
     valid_mask = [i < float('inf') for i in iterations]
     plot_iters = [it for it, v in zip(iterations, valid_mask) if v]
-    plot_auc = [val for val, v in zip(auc_vals, valid_mask) if v]
-    plot_f1 = [val for val, v in zip(f1_vals, valid_mask) if v]
-    plot_thresh = [val for val, v in zip(thresh_vals, valid_mask) if v]
+    plot_auc = [val for val, v in zip(auc_values, valid_mask) if v]
+    plot_f1 = [val for val, v in zip(f1_values, valid_mask) if v]
 
     # AUC plot
     axes[0].plot(plot_iters, plot_auc, 'bo-', linewidth=2, markersize=6)
@@ -375,15 +377,6 @@ def plot_combined_trajectories(iterations, auc_vals, f1_vals, thresh_vals, outpu
     axes[1].set_title(f'Best F1 Trajectory\nLES-F1 = {les_values["F1"]:.4f}')
     axes[1].grid(True, linestyle='--', alpha=0.7)
     axes[1].set_ylim([0, 1.05])
-
-    # Threshold plot
-    axes[2].plot(plot_iters, plot_thresh, 'ro-', linewidth=2, markersize=6)
-    axes[2].fill_between(plot_iters, plot_thresh, alpha=0.3, color='red')
-    axes[2].set_xlabel('Training Iteration')
-    axes[2].set_ylabel('Best F1 Threshold')
-    axes[2].set_title(f'Threshold Trajectory\nLES-Threshold = {les_values["Threshold"]:.4f}')
-    axes[2].grid(True, linestyle='--', alpha=0.7)
-    axes[2].set_ylim([0, 1.05])
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=PUB_DPI)
@@ -450,7 +443,6 @@ def main():
     iterations = []
     auc_values = []
     f1_values = []
-    thresh_values = []
 
     # Process each checkpoint
     for idx, (ckpt_name, iteration, ckpt_path) in enumerate(checkpoints):
@@ -500,14 +492,14 @@ def main():
         # Run ROC analysis
         print(f"  Running ROC analysis...")
         roc_plot = os.path.join(ckpt_subdir, f"ROC_iter{iter_str}.png")
-        roc_auc, best_f1, best_thresh = run_roc_analysis_internal(
+        roc_auc, best_f1 = run_roc_analysis_internal(
             combined_csv, roc_plot, color_threshold=args.color_threshold)
 
         if roc_auc is None:
             print(f"  WARNING: ROC analysis failed, skipping")
             continue
 
-        print(f"  Results: AUC={roc_auc:.4f}, F1={best_f1:.4f}, Threshold={best_thresh:.4f}")
+        print(f"  Results: AUC={roc_auc:.4f}, F1={best_f1:.4f}")
 
         # Store results
         results.append({
@@ -515,7 +507,6 @@ def main():
             'iteration': iteration if iteration < float('inf') else 'final',
             'AUC': roc_auc,
             'Best_F1': best_f1,
-            'Best_F1_Threshold': best_thresh,
             'PRS_samples': len(prs_probs),
             'RRS_samples': len(rrs_probs)
         })
@@ -523,7 +514,6 @@ def main():
         iterations.append(iteration)
         auc_values.append(roc_auc)
         f1_values.append(best_f1)
-        thresh_values.append(best_thresh)
 
     # Compute LES values
     print(f"\n{'='*60}")
@@ -532,17 +522,14 @@ def main():
 
     les_auc = compute_les(iterations, auc_values)
     les_f1 = compute_les(iterations, f1_values)
-    les_thresh = compute_les(iterations, thresh_values)
 
     les_values = {
         'AUC': les_auc,
         'F1': les_f1,
-        'Threshold': les_thresh
     }
 
     print(f"  LES-AUC: {les_auc:.6f}")
     print(f"  LES-F1: {les_f1:.6f}")
-    print(f"  LES-Threshold: {les_thresh:.6f}")
 
     # Generate trajectory plots
     if not args.no_plots and len(iterations) >= 2:
@@ -553,11 +540,9 @@ def main():
                               os.path.join(args.output_dir, 'trajectory_AUC.png'), les_auc)
         plot_metric_trajectory(iterations, f1_values, 'Best F1',
                               os.path.join(args.output_dir, 'trajectory_F1.png'), les_f1)
-        plot_metric_trajectory(iterations, thresh_values, 'Best F1 Threshold',
-                              os.path.join(args.output_dir, 'trajectory_Threshold.png'), les_thresh)
 
         # Combined plot
-        plot_combined_trajectories(iterations, auc_values, f1_values, thresh_values,
+        plot_combined_trajectories(iterations, auc_values, f1_values,
                                   os.path.join(args.output_dir, 'trajectory_combined.png'), les_values)
 
         print(f"  Saved trajectory plots to {args.output_dir}")
@@ -567,13 +552,13 @@ def main():
     summary_csv = os.path.join(args.output_dir, 'summary_table.csv')
     with open(summary_csv, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=['checkpoint', 'iteration', 'AUC', 'Best_F1',
-                                               'Best_F1_Threshold', 'PRS_samples', 'RRS_samples'])
+                                               'PRS_samples', 'RRS_samples'])
         writer.writeheader()
         writer.writerows(results)
 
     # Add LES row
     with open(summary_csv, 'a', newline='') as f:
-        f.write(f"\nLES (Learning Efficiency Score),---,{les_auc:.6f},{les_f1:.6f},{les_thresh:.6f},---,---\n")
+        f.write(f"\nLES (Learning Efficiency Score),---,{les_auc:.6f},{les_f1:.6f},---,---\n")
 
     print(f"  Saved summary table to {summary_csv}")
 
@@ -588,8 +573,7 @@ def main():
         'num_successful': len(results),
         'LES': {
             'AUC': les_auc,
-            'F1': les_f1,
-            'Threshold': les_thresh
+            'F1': les_f1
         },
         'results': results
     }
@@ -608,14 +592,12 @@ def main():
     print(f"\nLearning Efficiency Scores (LES):")
     print(f"  LES-AUC:       {les_auc:.6f}")
     print(f"  LES-F1:        {les_f1:.6f}")
-    print(f"  LES-Threshold: {les_thresh:.6f}")
 
     if results:
         final_result = results[-1]
         print(f"\nFinal Checkpoint Performance:")
         print(f"  AUC:       {final_result['AUC']:.4f}")
         print(f"  Best F1:   {final_result['Best_F1']:.4f}")
-        print(f"  Threshold: {final_result['Best_F1_Threshold']:.4f}")
 
     print(f"\nOutputs saved to: {args.output_dir}")
     print(f"{'='*60}\n")

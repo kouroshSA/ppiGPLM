@@ -1,4 +1,12 @@
-# LES-wrapper: Learning Efficiency Score Evaluation
+# LES-wrapper_v2: Learning Efficiency Score Evaluation
+
+> **v2 change:** the optimal-F1 **threshold** metric is no longer reported —
+> removed `trajectory_Threshold.png`, `LES-Threshold`, the `Best_F1_Threshold`
+> summary column, the manifest `Threshold` entry, and the threshold panel of the
+> combined figure. The best-F1 threshold is a degenerate diagnostic (for
+> non-discriminating controls it collapses toward 0, i.e. "predict everything
+> positive"), so it was dropped to keep the report clean. **ROC-AUC and Best-F1 are
+> unchanged.** Run `LES-wrapper_v2.py`.
 
 ## Overview
 
@@ -15,7 +23,6 @@ learning trajectory:
 
 - **LES-AUC**: Area under the AUC trajectory curve
 - **LES-F1**: Area under the Best-F1 trajectory curve
-- **LES-Threshold**: Area under the optimal-threshold trajectory curve
 
 Higher LES values indicate faster learning, better overall performance across training,
 and more efficient use of training iterations.
@@ -27,7 +34,7 @@ For each checkpoint the wrapper:
 1. Runs inference on PRS and RRS prompt files
 2. Extracts softmax probabilities for the positive class
 3. Combines probabilities into a single file for ROC analysis
-4. Computes AUC, Best-F1, and optimal threshold
+4. Computes AUC and Best-F1
 5. Generates a color-coded ROC curve plot
 6. Aggregates results into a summary table
 7. Plots metric trajectories across checkpoints
@@ -43,7 +50,7 @@ pip install scikit-learn matplotlib numpy
 ## Basic Usage
 
 ```bash
-python LES-wrapper.py \
+python LES-wrapper_v2.py \
     --checkpoint_dir out_ppiGPLM_MED4 \
     --prs_file MED4_Int_100pairs_prompts.txt \
     --rrs_file MED4_100_RND_prompts.txt \
@@ -60,7 +67,7 @@ The `--vanilla` flag is required when evaluating standard ppiGPLM checkpoints
 
 ```bash
 # Only checkpoints at iterations 1000, 2000, and 5000
-python LES-wrapper.py \
+python LES-wrapper_v2.py \
     --checkpoint_dir out_ppiGPLM_MED4 \
     --prs_file prs.txt \
     --rrs_file rrs.txt \
@@ -69,7 +76,7 @@ python LES-wrapper.py \
     --vanilla
 
 # Every 5000 iterations
-python LES-wrapper.py \
+python LES-wrapper_v2.py \
     --checkpoint_dir out_ppiGPLM_MED4 \
     --prs_file prs.txt \
     --rrs_file rrs.txt \
@@ -83,7 +90,7 @@ python LES-wrapper.py \
 If you have already run inference and just want to recompute metrics or plots:
 
 ```bash
-python LES-wrapper.py \
+python LES-wrapper_v2.py \
     --checkpoint_dir out_ppiGPLM_MED4 \
     --prs_file MED4_Int_100pairs_prompts.txt \
     --rrs_file MED4_100_RND_prompts.txt \
@@ -126,7 +133,6 @@ LES_results/
 ├── ckpt_2000/ ...
 ├── trajectory_AUC.png
 ├── trajectory_F1.png
-├── trajectory_Threshold.png
 ├── trajectory_combined.png
 ├── summary_table.csv
 └── manifest.json
