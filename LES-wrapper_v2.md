@@ -129,14 +129,40 @@ LES_results/
 │   ├── RRS_iter1000_classifications.txt
 │   ├── combined_probabilities_iter1000.csv
 │   ├── ROC_iter1000.png
+│   ├── prob_dist_iter1000.png        # P(interaction) PRS vs RRS, y-axis 0..1
 │   └── inference_log.md
 ├── ckpt_2000/ ...
-├── trajectory_AUC.png
-├── trajectory_F1.png
-├── trajectory_combined.png
+├── trajectory_AUC.png                # y-axis fixed 0..1
+├── trajectory_F1.png                 # y-axis 0..1; subtitle = "Area under the curve"
+├── trajectory_combined.png           # AUC + Best-F1 panels, y-axis 0..1
+├── summary_prob_distributions.png    # one panel per checkpoint (PRS vs RRS), y 0..1
+├── summary_prob_distributions_combined.png   # all violins on one axis: PRS then RRS
+├── README.md                         # legend for the analysis-level plots
 ├── summary_table.csv
 └── manifest.json
 ```
+
+Plots:
+- Each `ckpt_<N>/` gets a **`prob_dist_iter<N>.png`** — the P(interaction) distribution
+  for PRS (positives) vs RRS (negatives) at that checkpoint (violin + jittered points,
+  y-axis fixed to `[0, 1]`).
+- **`summary_prob_distributions.png`** collects those per-checkpoint distributions
+  into one figure (one panel per checkpoint) so the PRS/RRS separation over training
+  is visible at a glance.
+- **`summary_prob_distributions_combined.png`** shows every distribution on a single
+  axis with the x-axis split in two: all PRS violins (left, labelled by iteration)
+  then all RRS violins (right). Publication-quality, high-resolution.
+- A **`README.md`** legend for the analysis-level plots is written into each analysis
+  output folder (the per-checkpoint `ckpt_<N>/` folders get none).
+- The AUC and Best-F1 trajectories (and their combined figure) use a fixed `[0, 1]`
+  y-axis. The Best-F1 trajectory subtitle reports **"Area under the curve"** (the
+  integral of the F1-vs-iteration curve) rather than "LES-Best F1".
+
+**Single checkpoint:** if only one checkpoint is found, the wrapper does the normal
+per-checkpoint analysis (ROC + `prob_dist` + probability CSVs) and **skips** all
+summaries — no LES is computed or reported (no LES row in `summary_table.csv`,
+`manifest.LES` is `null`), and no trajectory/distribution-summary plots are produced,
+since those require ≥ 2 checkpoints.
 
 `summary_table.csv` contains per-checkpoint metrics plus a final row with the
 integrated LES values. `manifest.json` records complete run metadata.
