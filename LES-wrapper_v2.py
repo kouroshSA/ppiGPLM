@@ -477,8 +477,20 @@ def plot_summary_distributions_combined(dist_data, output_path):
         if 'cmedians' in parts:
             parts['cmedians'].set_color('black'); parts['cmedians'].set_linewidth(1.1)
 
+    def _points(data, positions, color):
+        # overlay the individual data points as jittered dots (as in the
+        # per-checkpoint prob_dist plots)
+        rng = np.random.default_rng(0)
+        for d, pos in zip(data, positions):
+            if len(d):
+                x = pos + (rng.random(len(d)) - 0.5) * 0.16
+                ax.scatter(x, d, s=6, color=color, alpha=0.5, edgecolors='none',
+                           zorder=3)
+
     _violins(prs_list, prs_pos, '#2166ac')       # PRS blue (positives)
     _violins(rrs_list, rrs_pos, '#b2182b')       # RRS red (negatives)
+    _points(prs_list, prs_pos, '#2166ac')
+    _points(rrs_list, rrs_pos, '#b2182b')
 
     ax.axvline(divider, color='gray', linestyle='--', linewidth=1.3)
 
@@ -511,7 +523,38 @@ def write_analysis_readme(output_dir):
 This folder is the Learning Efficiency Score (LES) analysis for one model evaluated
 on one PRS (Positive Reference Set) / RRS (Random Reference Set) pair, across all
 saved training checkpoints. **PRS = blue (positives); RRS = red (negatives).** The
-interaction score for each pair is `P(next token = 1)` in [0, 1].
+interaction score for each pair is `P(next token = 1)` in [0, 1] — see the next
+section for exactly what that number is.
+
+## What "probability" / `P(interaction)` means here (read this)
+The value on every y-axis — labelled `P(interaction)` — is **not** an empirical
+frequency or a calibrated statistical probability that two proteins interact. It is the
+**model's next-token softmax probability for the token `1`**.
+
+For a prompt holding the two sequences (`<ps1>,SEQ1,<ps2>,SEQ2,<`), the model emits
+logits over its entire vocabulary at the next position; a softmax turns those logits
+into a probability for every token, and we read off the mass on the single token `1`:
+
+```
+P(interaction) = softmax(last-position logits)[ id("1") ]
+```
+
+- It is a genuine probability **of the next generated token being `1`**, in [0, 1] — i.e.
+  a softmax-normalised logit, computed once per pair from a single forward pass.
+- The softmax is over the **whole vocabulary**, not renormalised over just `{0, 1}`, so
+  `P(1)` and `P(0)` need **not** sum to 1 (a trained model puts almost all mass on
+  `0`/`1`, so in practice they nearly do). Both are saved in each per-checkpoint
+  `*_probabilities.csv` (`Probability_of_1`, `Probability_of_0`).
+- **No temperature** is applied to this number. The sampler's `temperature=0.1` affects
+  only a separately-generated example continuation (the classification `.txt`), never
+  the probability that is scored and plotted.
+- **It is `P(1)` for *both* PRS and RRS** — a single, shared score function, *not*
+  "`P(1)` for PRS and `P(0)` for RRS". That shared score is what makes the ROC/AUC
+  valid: every pair gets the same score `P(1)`, PRS pairs are labelled 1 and RRS pairs 0,
+  and AUC measures how well `P(1)` ranks true interactors above random ones. A good model
+  pushes `P(1)` high for PRS (blue, near 1) and low for RRS (red, near 0 — equivalently,
+  its mass goes on `0`). `Probability_of_0` is recorded but is **not** used for AUC, F1,
+  LES, or any plot.
 
 ## Summary figures (this folder)
 - **`trajectory_AUC.png`** — ROC-AUC vs training iteration (y-axis 0-1). Subtitle
@@ -529,6 +572,29 @@ interaction score for each pair is `P(next token = 1)` in [0, 1].
   staying high and RRS staying low across training in one view.
 - **`summary_table.csv`** — per-checkpoint AUC and Best-F1, plus a final LES row.
 - **`manifest.json`** — run metadata and LES values.
+
+## How to read the violin plots
+Each violin summarises the 100 P(interaction) scores for one reference set (PRS or
+RRS) at one checkpoint. The anatomy:
+
+- **Width (the shaded shape):** a kernel-density estimate (KDE) of the score
+  distribution. The violin is *wider at probability values where more of the 100
+  pairs fall* and narrows where few pairs do — so a bulge near the top means many
+  pairs scored close to 1, a bulge near the bottom means many scored close to 0. The
+  width is a *relative* density (each violin is scaled to the same maximum width); it
+  shows the *shape* of the distribution, not an absolute count. The KDE can extend
+  slightly beyond the individual points because it smooths them.
+- **Horizontal black line:** the **median** of the 100 scores (the 50th percentile —
+  half the pairs score above it, half below). It is *not* the mean; with skewed,
+  piled-up distributions the median is the more robust centre. A PRS median near 1 and
+  an RRS median near 0 is the signature of a well-separated, discriminating model.
+- **Dots:** the individual pairs — all 100 raw scores, jittered horizontally only (the
+  jitter is cosmetic, to unstack points; vertical position is the true probability).
+  They let you see the actual sample behind the smoothed shape, including outliers the
+  KDE glosses over (e.g. a handful of PRS pairs scoring low).
+- **Colour:** blue = PRS (positives, should sit high), red = RRS (negatives, should
+  sit low). No whiskers/quartile boxes or min/max bars are drawn — only the density,
+  the median line, and the points.
 
 ## Per-checkpoint folders (`ckpt_<iter>/`)
 Each holds that checkpoint's ROC curve (`ROC_iter<iter>.png`), its probability

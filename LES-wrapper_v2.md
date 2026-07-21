@@ -8,6 +8,15 @@
 > positive"), so it was dropped to keep the report clean. **ROC-AUC and Best-F1 are
 > unchanged.** Run `LES-wrapper_v2.py`.
 
+> **Later additions:** (1) the combined PRS/RRS violin figure now overlays the
+> individual scores as jittered dots (matching the per-checkpoint panels); (2) the
+> analysis-level `README.md` now includes a **"How to read the violin plots"** legend
+> (violin width = KDE density, horizontal line = median, dots = the 100 individual
+> pairs) and a **"What `P(interaction)` means"** section clarifying that the score is
+> the model's next-token softmax probability for token `1` — computed for *both* PRS
+> and RRS (a single shared ROC score, not `P(1)` for PRS / `P(0)` for RRS), softmax'd
+> over the full vocabulary, with no temperature applied.
+
 ## Overview
 
 The **LES-wrapper** automates the evaluation of model trainability across multiple
