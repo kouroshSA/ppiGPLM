@@ -1,6 +1,6 @@
-# V3 OOF PRS / RRS reference sets (ppiGPLM format)
+# V3 PRS / RRS reference sets (ppiGPLM format)
 
-The ten out-of-fold (V3) evaluation reference sets used to score the ppiGPLM
+The ten V3 (MCCV replicate) evaluation reference sets used to score the ppiGPLM
 checkpoints:
 
 - `PRS-V3-{1..10}.csv` — **positive** reference sets (reported interactions),
@@ -10,7 +10,7 @@ checkpoints:
 
 These are the **non-depleted** sets (every pair kept). For the heterotypic-only
 versions with self-pairs removed, see
-[`../OOF_set_v3_PRS-RRS_no_homodimers/`](../OOF_set_v3_PRS-RRS_no_homodimers).
+[`../Set_V3_PRS-RRS_no_homodimers/`](../Set_V3_PRS-RRS_no_homodimers).
 
 ## Format
 

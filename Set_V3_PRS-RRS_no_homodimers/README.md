@@ -1,7 +1,7 @@
-# V3 OOF PRS / RRS — homodimer-depleted (ppiGPLM format)
+# V3 PRS / RRS — homodimer-depleted (ppiGPLM format)
 
-Heterotypic-only versions of the V3 reference sets in
-[`../OOF_set_v3_PRS-RRS/`](../OOF_set_v3_PRS-RRS), with every **homodimer**
+Heterotypic-only versions of the V3 (MCCV replicate) reference sets in
+[`../Set_V3_PRS-RRS/`](../Set_V3_PRS-RRS), with every **homodimer**
 (a pair whose two sequences are identical, `SEQ1 == SEQ2`) removed from each PRS.
 These are the reference sets used for the homodimer-free LES analysis of the ten
 V3 models.
