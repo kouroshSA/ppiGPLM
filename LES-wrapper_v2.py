@@ -98,6 +98,14 @@ Examples:
                         help='Also include ckpt.pt (final checkpoint) if present')
 
     # Control flow
+    parser.add_argument('--no_metrics', action='store_true',
+                        help='Skip ROC-AUC and Best-F1 (and the LES / AUC-F1 trajectory '
+                             'plots that derive from them). Use for random-substituted '
+                             'CONTROL sets: there neither reference file contains true '
+                             'positives (both are random pairs), so ranking metrics like '
+                             'AUC/F1 are not meaningful. Probability distributions '
+                             '(violins) and the raw probability CSVs are still produced. '
+                             'Auto-enabled when the PRS/RRS filenames contain "random".')
     parser.add_argument('--skip_inference', action='store_true',
                         help='Skip inference step (use existing probability files)')
 
@@ -617,6 +625,15 @@ overlapping (the expected null).
 def main():
     args, extra_args = parse_args()
 
+    # Random-substituted control sets have no true positives (both reference
+    # files are random pairs), so ROC-AUC / Best-F1 / LES are not meaningful.
+    # Honour --no_metrics, and auto-enable it when the filenames say "random".
+    _names = (os.path.basename(args.prs_file) + os.path.basename(args.rrs_file)).lower()
+    if not args.no_metrics and 'random' in _names:
+        args.no_metrics = True
+        print("[no_metrics] random-control reference set detected -> skipping "
+              "AUC/F1/LES; reporting probability distributions only.")
+
     set_publication_style()
 
     # Validate inputs
@@ -725,17 +742,19 @@ def main():
             os.path.join(ckpt_subdir, f"prob_dist_iter{iter_str}.png"), iter_str)
         dist_data.append((iter_str, list(prs_probs), list(rrs_probs)))
 
-        # Run ROC analysis
-        print(f"  Running ROC analysis...")
-        roc_plot = os.path.join(ckpt_subdir, f"ROC_iter{iter_str}.png")
-        roc_auc, best_f1 = run_roc_analysis_internal(
-            combined_csv, roc_plot, color_threshold=args.color_threshold)
-
-        if roc_auc is None:
-            print(f"  WARNING: ROC analysis failed, skipping")
-            continue
-
-        print(f"  Results: AUC={roc_auc:.4f}, F1={best_f1:.4f}")
+        # Run ROC analysis (skipped for random controls — no true positives)
+        if args.no_metrics:
+            roc_auc = best_f1 = None
+            print(f"  (no_metrics) skipping ROC/AUC/F1; distribution only")
+        else:
+            print(f"  Running ROC analysis...")
+            roc_plot = os.path.join(ckpt_subdir, f"ROC_iter{iter_str}.png")
+            roc_auc, best_f1 = run_roc_analysis_internal(
+                combined_csv, roc_plot, color_threshold=args.color_threshold)
+            if roc_auc is None:
+                print(f"  WARNING: ROC analysis failed, skipping")
+                continue
+            print(f"  Results: AUC={roc_auc:.4f}, F1={best_f1:.4f}")
 
         # Store results
         results.append({
@@ -748,13 +767,17 @@ def main():
         })
 
         iterations.append(iteration)
-        auc_values.append(roc_auc)
-        f1_values.append(best_f1)
+        if not args.no_metrics:
+            auc_values.append(roc_auc)
+            f1_values.append(best_f1)
 
     # Compute LES values (only meaningful with >= 2 checkpoints). With a single
     # checkpoint, do the per-checkpoint analysis only and skip all summaries.
+    # LES + AUC/F1 trajectories need >= 2 checkpoints AND meaningful metrics
+    # (random-control sets have none). Distribution summaries only need >= 2 ckpts.
     multi = len(iterations) >= 2
-    if multi:
+    have_metrics = (not args.no_metrics) and len(auc_values) >= 2
+    if have_metrics:
         print(f"\n{'='*60}")
         print("Computing Learning Efficiency Scores (LES)")
         print(f"{'='*60}")
@@ -766,37 +789,34 @@ def main():
     else:
         les_auc = les_f1 = None
         les_values = {}
-        print(f"\nOnly {len(iterations)} checkpoint(s) analyzed — skipping LES, "
-              f"trajectory, and distribution summaries (these need >= 2 checkpoints).")
+        if args.no_metrics:
+            print("\n[no_metrics] random control — skipping LES and AUC/F1 trajectories; "
+                  "probability distributions are still produced.")
+        else:
+            print(f"\nOnly {len(iterations)} checkpoint(s) analyzed — skipping LES / "
+                  f"trajectories (need >= 2 checkpoints).")
 
-    # Generate trajectory plots
-    if not args.no_plots and multi:
-        print(f"\nGenerating trajectory plots...")
-
-        # Individual plots (y-axis 0..1; F1 subtitle reports the area under the curve)
-        plot_metric_trajectory(iterations, auc_values, 'AUC',
-                              os.path.join(args.output_dir, 'trajectory_AUC.png'), les_auc,
-                              les_label='LES-AUC')
-        plot_metric_trajectory(iterations, f1_values, 'Best F1',
-                              os.path.join(args.output_dir, 'trajectory_F1.png'), les_f1,
-                              les_label='Area under the curve')
-
-        # Combined plot
-        plot_combined_trajectories(iterations, auc_values, f1_values,
-                                  os.path.join(args.output_dir, 'trajectory_combined.png'), les_values)
-
-        # Summary of per-checkpoint probability distributions (PRS vs RRS): the
-        # per-checkpoint grid, plus a single combined-axes version (PRS then RRS).
-        plot_summary_distributions(dist_data,
-                                   os.path.join(args.output_dir, 'summary_prob_distributions.png'))
-        plot_summary_distributions_combined(
-            dist_data,
-            os.path.join(args.output_dir, 'summary_prob_distributions_combined.png'))
-
-        # README legend for the analysis-level plots (not the per-checkpoint folders)
-        write_analysis_readme(args.output_dir)
-
-        print(f"  Saved trajectory plots to {args.output_dir}")
+    # Plots: AUC/F1 trajectories only when metrics are meaningful; the PRS-vs-RRS
+    # probability-distribution summaries are produced whenever there are >= 2 ckpts.
+    if not args.no_plots:
+        if have_metrics:
+            print(f"\nGenerating trajectory plots...")
+            plot_metric_trajectory(iterations, auc_values, 'AUC',
+                                  os.path.join(args.output_dir, 'trajectory_AUC.png'), les_auc,
+                                  les_label='LES-AUC')
+            plot_metric_trajectory(iterations, f1_values, 'Best F1',
+                                  os.path.join(args.output_dir, 'trajectory_F1.png'), les_f1,
+                                  les_label='Area under the curve')
+            plot_combined_trajectories(iterations, auc_values, f1_values,
+                                      os.path.join(args.output_dir, 'trajectory_combined.png'), les_values)
+        if multi:
+            plot_summary_distributions(dist_data,
+                                       os.path.join(args.output_dir, 'summary_prob_distributions.png'))
+            plot_summary_distributions_combined(
+                dist_data,
+                os.path.join(args.output_dir, 'summary_prob_distributions_combined.png'))
+            write_analysis_readme(args.output_dir)
+            print(f"  Saved distribution plots to {args.output_dir}")
 
     # Generate summary table
     print(f"\nGenerating summary table...")
@@ -807,8 +827,8 @@ def main():
         writer.writeheader()
         writer.writerows(results)
 
-    # Add LES row (only when there are >= 2 checkpoints)
-    if multi:
+    # Add LES row (only when metrics are meaningful and >= 2 checkpoints)
+    if have_metrics:
         with open(summary_csv, 'a', newline='') as f:
             f.write(f"\nLES (Learning Efficiency Score),---,{les_auc:.6f},{les_f1:.6f},---,---\n")
 
@@ -823,7 +843,8 @@ def main():
         'output_dir': args.output_dir,
         'num_checkpoints': len(checkpoints),
         'num_successful': len(results),
-        'LES': ({'AUC': les_auc, 'F1': les_f1} if multi else None),
+        'LES': ({'AUC': les_auc, 'F1': les_f1} if have_metrics else None),
+        'metrics_excluded': bool(args.no_metrics),
         'results': results
     }
 
@@ -838,10 +859,12 @@ def main():
     print("FINAL SUMMARY")
     print(f"{'='*60}")
     print(f"Checkpoints processed: {len(results)}/{len(checkpoints)}")
-    if multi:
+    if have_metrics:
         print(f"\nLearning Efficiency Scores (LES):")
         print(f"  LES-AUC:       {les_auc:.6f}")
         print(f"  LES-F1:        {les_f1:.6f}")
+    elif args.no_metrics:
+        print("\n(Random control: AUC/F1/LES excluded; probability distributions produced.)")
     else:
         print("\n(Single checkpoint: LES and trajectory/distribution summaries skipped.)")
 
